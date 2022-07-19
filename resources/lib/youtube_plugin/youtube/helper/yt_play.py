@@ -63,7 +63,7 @@ def play_video(provider, context):
         if video_stream is None:
             return False
 
-        is_video = True if video_stream.get('video') else False
+        is_video = bool(video_stream.get('video'))
         is_live = video_stream.get('Live') is True
 
         if is_video and video_stream['video'].get('rtmpe', False):
@@ -101,8 +101,7 @@ def play_video(provider, context):
         item.setPath(video_item.get_uri())
 
         try:
-            seek = float(context.get_param('seek', None))
-            if seek:
+            if seek := float(context.get_param('seek', None)):
                 seek_time = seek
         except (ValueError, TypeError):
             pass
@@ -169,7 +168,15 @@ def play_playlist(provider, context):
             order_list.append('shuffle')
         items = []
         for order in order_list:
-            items.append((context.localize(provider.LOCAL_MAP['youtube.playlist.play.%s' % order]), order))
+            items.append(
+                (
+                    context.localize(
+                        provider.LOCAL_MAP[f'youtube.playlist.play.{order}']
+                    ),
+                    order,
+                )
+            )
+
 
         order = context.get_ui().on_select(context.localize(provider.LOCAL_MAP['youtube.playlist.play.select']), items)
         if order not in order_list:
@@ -197,7 +204,7 @@ def play_playlist(provider, context):
         find_video_id = re.compile(r'video_id=(?P<video_id>[^&]+)')
         for video in videos:
             video_id_match = find_video_id.search(video.get_uri())
-            if video_id_match and video_id_match.group('video_id') == video_id:
+            if video_id_match and video_id_match['video_id'] == video_id:
                 break
             playlist_position += 1
 
@@ -234,8 +241,7 @@ def play_playlist(provider, context):
 def play_channel_live(provider, context):
     channel_id = context.get_param('channel_id')
     index = int(context.get_param('live')) - 1
-    if index < 0:
-        index = 0
+    index = max(index, 0)
     json_data = provider.get_client(context).search(q='', search_type='video', event_type='live', channel_id=channel_id, safe_search=False)
     if not v3.handle_error(provider, context, json_data):
         return False

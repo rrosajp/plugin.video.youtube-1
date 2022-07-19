@@ -20,11 +20,7 @@ import xbmc
 @python_2_unicode_compatible
 class SystemVersion(object):
     def __init__(self, version, releasename, appname):
-        if not isinstance(version, tuple):
-            self._version = (0, 0, 0, 0)
-        else:
-            self._version = version
-
+        self._version = version if isinstance(version, tuple) else (0, 0, 0, 0)
         if not releasename or not isinstance(releasename, string_types):
             self._releasename = 'UNKNOWN'
         else:
@@ -71,8 +67,7 @@ class SystemVersion(object):
             self._releasename = 'Frodo'
 
     def __str__(self):
-        obj_str = "%s (%s-%s)" % (self._releasename, self._appname, '.'.join(map(str, self._version)))
-        return obj_str
+        return f"{self._releasename} ({self._appname}-{'.'.join(map(str, self._version))})"
 
     def get_release_name(self):
         return self._releasename

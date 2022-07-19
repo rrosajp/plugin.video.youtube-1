@@ -47,10 +47,12 @@ class YouTubeMonitor(xbmc.Monitor):
         del addon
 
     def onNotification(self, sender, method, data):
-        if sender == 'plugin.video.youtube' and method.endswith('.check_settings'):
+        if sender != 'plugin.video.youtube':
+            return
+        if method.endswith('.check_settings'):
             data = json.loads(data)
             data = json.loads(unquote(data[0]))
-            logger.log_debug('onNotification: |check_settings| -> |%s|' % json.dumps(data))
+            logger.log_debug(f'onNotification: |check_settings| -> |{json.dumps(data)}|')
 
             _use_httpd = data.get('use_httpd')
             _httpd_port = data.get('httpd_port')
@@ -85,7 +87,7 @@ class YouTubeMonitor(xbmc.Monitor):
             elif not self.use_httpd() and self.httpd:
                 self.shutdown_httpd()
 
-        elif sender == 'plugin.video.youtube':
+        else:
             logger.log_debug('onNotification: |unknown method|')
 
     def use_httpd(self):
@@ -107,18 +109,19 @@ class YouTubeMonitor(xbmc.Monitor):
         self._old_httpd_port = self._httpd_port
 
     def start_httpd(self):
-        if not self.httpd:
-            logger.log_debug('HTTPServer: Starting |{ip}:{port}|'.format(ip=self.httpd_address(),
-                                                                         port=str(self.httpd_port())))
-            self.httpd_port_sync()
-            self.httpd = get_http_server(address=self.httpd_address(), port=self.httpd_port())
-            if self.httpd:
-                self.httpd_thread = threading.Thread(target=self.httpd.serve_forever)
-                self.httpd_thread.daemon = True
-                self.httpd_thread.start()
-                sock_name = self.httpd.socket.getsockname()
-                logger.log_debug('HTTPServer: Serving on |{ip}:{port}|'.format(ip=str(sock_name[0]),
-                                                                               port=str(sock_name[1])))
+        if self.httpd:
+            return
+        logger.log_debug('HTTPServer: Starting |{ip}:{port}|'.format(ip=self.httpd_address(),
+                                                                     port=str(self.httpd_port())))
+        self.httpd_port_sync()
+        self.httpd = get_http_server(address=self.httpd_address(), port=self.httpd_port())
+        if self.httpd:
+            self.httpd_thread = threading.Thread(target=self.httpd.serve_forever)
+            self.httpd_thread.daemon = True
+            self.httpd_thread.start()
+            sock_name = self.httpd.socket.getsockname()
+            logger.log_debug('HTTPServer: Serving on |{ip}:{port}|'.format(ip=str(sock_name[0]),
+                                                                           port=str(sock_name[1])))
 
     def shutdown_httpd(self):
         if self.httpd:
@@ -143,9 +146,9 @@ class YouTubeMonitor(xbmc.Monitor):
 
     def remove_temp_dir(self):
         try:
-            path = xbmc.translatePath('special://temp/%s' % self.addon_id).decode('utf-8')
+            path = xbmc.translatePath(f'special://temp/{self.addon_id}').decode('utf-8')
         except AttributeError:
-            path = xbmc.translatePath('special://temp/%s' % self.addon_id)
+            path = xbmc.translatePath(f'special://temp/{self.addon_id}')
 
         if os.path.isdir(path):
             try:

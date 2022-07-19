@@ -53,8 +53,10 @@ class BaseItem(object):
         name = self._name
         uri = self._uri
         image = self._image
-        obj_str = "------------------------------\n'%s'\nURI: %s\nImage: %s\n------------------------------" % (name, uri, image)
-        return obj_str
+        return (
+            "------------------------------\n'%s'\nURI: %s\nImage: %s\n------------------------------"
+            % (name, uri, image)
+        )
 
     def get_id(self):
         """
@@ -74,10 +76,7 @@ class BaseItem(object):
         return self._name
 
     def set_uri(self, uri):
-        if isinstance(uri, string_types):
-            self._uri = uri
-        else:
-            self._uri = ''
+        self._uri = uri if isinstance(uri, string_types) else ''
 
     def get_uri(self):
         """
@@ -87,10 +86,7 @@ class BaseItem(object):
         return self._uri
 
     def set_image(self, image):
-        if image is None:
-            self._image = ''
-        else:
-            self._image = image
+        self._image = '' if image is None else image
 
     def get_image(self):
         return self._image

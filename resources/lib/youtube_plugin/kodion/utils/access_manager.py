@@ -39,12 +39,11 @@ class AccessManager(object):
         :param user_name: string, users name
         :return: a new user dict
         """
-        uuids = list()
+        uuids = []
         new_uuid = uuid.uuid4().hex
 
         for k in list(self._json['access_manager']['users'].keys()):
-            user_uuid = self._json['access_manager']['users'][k].get('id')
-            if user_uuid:
+            if user_uuid := self._json['access_manager']['users'][k].get('id'):
                 uuids.append(user_uuid)
 
         while new_uuid in uuids:
@@ -125,7 +124,7 @@ class AccessManager(object):
         :param playlist_id: string, watch later playlist id
         :return:
         """
-        if playlist_id.lower() == 'wl' or playlist_id.lower() == ' wl':
+        if playlist_id.lower() in ['wl', ' wl']:
             playlist_id = ''
 
         self._json = self._jstore.get_data()

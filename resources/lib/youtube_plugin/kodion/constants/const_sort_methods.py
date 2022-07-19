@@ -20,10 +20,9 @@ except:
 def _const(name):
     if _xbmc:
         return eval(name)
-    else:
-        global _count
-        _count += 1
-        return _count
+    global _count
+    _count += 1
+    return _count
 
 
 ALBUM = _const('SORT_METHOD_ALBUM')

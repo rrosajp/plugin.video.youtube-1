@@ -46,31 +46,28 @@ def get_thumb_timestamp(minutes=15):
 
 
 def make_comment_item(context, provider, snippet, uri, total_replies=0):
-    author = '[B]{}[/B]'.format(kodion.utils.to_str(snippet['authorDisplayName']))
+    author = f"[B]{kodion.utils.to_str(snippet['authorDisplayName'])}[/B]"
     body = kodion.utils.to_str(snippet['textOriginal'])
 
     label_props = None
     plot_props = None
     is_edited = (snippet['publishedAt'] != snippet['updatedAt'])
-    
+
     str_likes = ('%.1fK' % (snippet['likeCount'] / 1000.0)) if snippet['likeCount'] > 1000 else str(snippet['likeCount'])
     str_replies = ('%.1fK' % (total_replies / 1000.0)) if total_replies > 1000 else str(total_replies)
 
     if snippet['likeCount'] and total_replies:
-        label_props = '[COLOR lime][B]+%s[/B][/COLOR]|[COLOR cyan][B]%s[/B][/COLOR]' % (str_likes, str_replies)
-        plot_props = '[COLOR lime][B]%s %s[/B][/COLOR]|[COLOR cyan][B]%s %s[/B][/COLOR]' % (str_likes,
-                     context.localize(provider.LOCAL_MAP['youtube.video.comments.likes']), str_replies,
-                     context.localize(provider.LOCAL_MAP['youtube.video.comments.replies']))
+        label_props = f'[COLOR lime][B]+{str_likes}[/B][/COLOR]|[COLOR cyan][B]{str_replies}[/B][/COLOR]'
+
+        plot_props = f"[COLOR lime][B]{str_likes} {context.localize(provider.LOCAL_MAP['youtube.video.comments.likes'])}[/B][/COLOR]|[COLOR cyan][B]{str_replies} {context.localize(provider.LOCAL_MAP['youtube.video.comments.replies'])}[/B][/COLOR]"
+
     elif snippet['likeCount']:
-        label_props = '[COLOR lime][B]+%s[/B][/COLOR]' % str_likes
-        plot_props = '[COLOR lime][B]%s %s[/B][/COLOR]' % (str_likes,
-                     context.localize(provider.LOCAL_MAP['youtube.video.comments.likes']))
+        label_props = f'[COLOR lime][B]+{str_likes}[/B][/COLOR]'
+        plot_props = f"[COLOR lime][B]{str_likes} {context.localize(provider.LOCAL_MAP['youtube.video.comments.likes'])}[/B][/COLOR]"
+
     elif total_replies:
-        label_props = '[COLOR cyan][B]%s[/B][/COLOR]' % str_replies
-        plot_props = '[COLOR cyan][B]%s %s[/B][/COLOR]' % (str_replies,
-                     context.localize(provider.LOCAL_MAP['youtube.video.comments.replies']))
-    else:
-        pass # The comment has no likes or replies.
+        label_props = f'[COLOR cyan][B]{str_replies}[/B][/COLOR]'
+        plot_props = f"[COLOR cyan][B]{str_replies} {context.localize(provider.LOCAL_MAP['youtube.video.comments.replies'])}[/B][/COLOR]"
 
     # Format the label of the comment item.
     edited = '[B]*[/B]' if is_edited else ''
@@ -81,7 +78,12 @@ def make_comment_item(context, provider, snippet, uri, total_replies=0):
         label = '{author}{edited} {body}'.format(author=author, edited=edited, body=body.replace('\n', ' '))
 
     # Format the plot of the comment item.
-    edited = ' (%s)' % context.localize(provider.LOCAL_MAP['youtube.video.comments.edited']) if is_edited else ''
+    edited = (
+        f" ({context.localize(provider.LOCAL_MAP['youtube.video.comments.edited'])})"
+        if is_edited
+        else ''
+    )
+
     if plot_props:
         plot = '{author} ({props}){edited}[CR][CR]{body}'.format(author=author, props=plot_props,
                                                                edited=edited, body=body)
@@ -101,7 +103,7 @@ def update_channel_infos(provider, context, channel_id_dict, subscription_id_dic
         subscription_id_dict = {}
 
     channel_ids = list(channel_id_dict.keys())
-    if len(channel_ids) == 0:
+    if not channel_ids:
         return
 
     resource_manager = provider.get_resource_manager(context)
@@ -131,9 +133,7 @@ def update_channel_infos(provider, context, channel_id_dict, subscription_id_dic
 
         # - update context menu
         context_menu = []
-        # -- unsubscribe from channel
-        subscription_id = subscription_id_dict.get(channel_id, '')
-        if subscription_id:
+        if subscription_id := subscription_id_dict.get(channel_id, ''):
             channel_item.set_channel_subscription_id(subscription_id)
             yt_context_menu.append_unsubscribe_from_channel(context_menu, provider, context, subscription_id)
         # -- subscribe to the channel
@@ -171,7 +171,7 @@ def update_channel_infos(provider, context, channel_id_dict, subscription_id_dic
 
 def update_playlist_infos(provider, context, playlist_id_dict, channel_items_dict=None):
     playlist_ids = list(playlist_id_dict.keys())
-    if len(playlist_ids) == 0:
+    if not playlist_ids:
         return
 
     resource_manager = provider.get_resource_manager(context)
@@ -226,7 +226,7 @@ def update_playlist_infos(provider, context, playlist_id_dict, channel_items_dic
                 else:
                     yt_context_menu.append_set_as_history(context_menu, provider, context, playlist_id, title)
 
-        if len(context_menu) > 0:
+        if context_menu:
             playlist_item.set_context_menu(context_menu)
 
         # update channel mapping

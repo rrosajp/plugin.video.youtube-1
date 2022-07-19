@@ -36,7 +36,7 @@ def run(provider, context=None):
         import platform
 
         python_version = str(platform.python_version())
-        python_version = 'Python %s' % python_version
+        python_version = f'Python {python_version}'
     except:
         # do nothing
         pass
@@ -65,4 +65,6 @@ def run(provider, context=None):
     if __DEBUG_RUNTIME:
         debug.runtime(context, addon_version, elapsed, single_file=__DEBUG_RUNTIME_SINGLE_FILE)
 
-    context.log_debug('Shutdown of Kodion after |%s| seconds' % str(round(elapsed, 4)))
+    context.log_debug(
+        f'Shutdown of Kodion after |{str(round(elapsed, 4))}| seconds'
+    )

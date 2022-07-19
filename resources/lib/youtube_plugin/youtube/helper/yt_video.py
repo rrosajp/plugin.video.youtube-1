@@ -42,22 +42,25 @@ def _process_rate_video(provider, context, re_match):
         if not v3.handle_error(provider, context, json_data):
             return False
 
-        items = json_data.get('items', [])
-        if items:
+        if items := json_data.get('items', []):
             current_rating = items[0].get('rating', '')
 
     rating_items = []
     if not rating_param:
-        for rating in ratings:
-            if rating != current_rating:
-                rating_items.append((context.localize(provider.LOCAL_MAP['youtube.video.rate.%s' % rating]), rating))
+        rating_items.extend(
+            (
+                context.localize(
+                    provider.LOCAL_MAP[f'youtube.video.rate.{rating}']
+                ),
+                rating,
+            )
+            for rating in ratings
+            if rating != current_rating
+        )
+
         result = context.get_ui().on_select(context.localize(provider.LOCAL_MAP['youtube.video.rate']), rating_items)
     else:
-        if rating_param != current_rating:
-            result = rating_param
-        else:
-            result = -1
-
+        result = rating_param if rating_param != current_rating else -1
     if result != -1:
         notify_message = ''
 

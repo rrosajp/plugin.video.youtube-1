@@ -34,9 +34,7 @@ except AttributeError:
 
 
 def loose_version(v):
-    filled = []
-    for point in v.split("."):
-        filled.append(point.zfill(8))
+    filled = [point.zfill(8) for point in v.split(".")]
     return tuple(filled)
 
 
@@ -62,7 +60,7 @@ def to_utf8(text):
 
 def to_unicode(text):
     result = text
-    if isinstance(text, string_types) or isinstance(text, bytes):
+    if isinstance(text, (string_types, bytes)):
         try:
             result = text.decode('utf-8', 'ignore')
         except (AttributeError, UnicodeEncodeError):
@@ -136,7 +134,9 @@ def select_stream(context, stream_data_list, quality_map_override=None, ask_for_
     dash_live = settings.use_dash_live_streams() and 'live' in context.inputstream_adaptive_capabilities()
     dash_videos = settings.use_dash_videos()
 
-    if use_dash and any([item['container'] == 'mpd' for item in stream_data_list]):
+    if use_dash and any(
+        item['container'] == 'mpd' for item in stream_data_list
+    ):
         use_dash = context.use_inputstream_adaptive()
 
     if not use_dash:
@@ -163,7 +163,7 @@ def select_stream(context, stream_data_list, quality_map_override=None, ask_for_
     sorted_stream_data_list = sorted(stream_data_list, key=_sort_stream_data, reverse=True)
 
     context.log_debug('selectable streams: %d' % len(sorted_stream_data_list))
-    log_streams = list()
+    log_streams = []
     for sorted_stream_data in sorted_stream_data_list:
         log_data = copy.deepcopy(sorted_stream_data)
         if 'license_info' in log_data:
@@ -176,7 +176,7 @@ def select_stream(context, stream_data_list, quality_map_override=None, ask_for_
 
     selected_stream_data = None
     if ask_for_quality and len(sorted_stream_data_list) > 1:
-        items = list()
+        items = []
         for sorted_stream_data in sorted_stream_data_list:
             items.append((sorted_stream_data['title'], sorted_stream_data))
 
@@ -191,7 +191,7 @@ def select_stream(context, stream_data_list, quality_map_override=None, ask_for_
         if 'license_info' in log_data:
             log_data['license_info']['url'] = '[not shown]' if log_data['license_info'].get('url') else None
             log_data['license_info']['token'] = '[not shown]' if log_data['license_info'].get('token') else None
-        context.log_debug('selected stream: %s' % log_data)
+        context.log_debug(f'selected stream: {log_data}')
 
     return selected_stream_data
 
@@ -204,11 +204,7 @@ def create_path(*args):
 
         comps.append(str(arg.strip('/').replace('\\', '/').replace('//', '/')))
 
-    uri_path = '/'.join(comps)
-    if uri_path:
-        return u'/%s/' % uri_path
-
-    return '/'
+    return f'/{uri_path}/' if (uri_path := '/'.join(comps)) else '/'
 
 
 def create_uri_path(*args):
@@ -219,9 +215,8 @@ def create_uri_path(*args):
 
         comps.append(str(arg.strip('/').replace('\\', '/').replace('//', '/')))
 
-    uri_path = '/'.join(comps)
-    if uri_path:
-        return urllib.parse.quote('/%s/' % uri_path)
+    if uri_path := '/'.join(comps):
+        return urllib.parse.quote(f'/{uri_path}/')
 
     return '/'
 
@@ -268,7 +263,8 @@ def make_dirs(path):
 
 
 def find_video_id(plugin_path):
-    match = re.search(r'.*video_id=(?P<video_id>[a-zA-Z0-9_\-]{11}).*', plugin_path)
-    if match:
-        return match.group('video_id')
+    if match := re.search(
+        r'.*video_id=(?P<video_id>[a-zA-Z0-9_\-]{11}).*', plugin_path
+    ):
+        return match['video_id']
     return ''

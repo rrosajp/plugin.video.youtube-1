@@ -151,8 +151,7 @@ class VideoItem(BaseItem):
         return self._cast
 
     def set_imdb_id(self, url_or_id):
-        re_match = __RE_IMDB__.match(url_or_id)
-        if re_match:
+        if re_match := __RE_IMDB__.match(url_or_id):
             self._imdb_id = re_match.group('imdbid')
         else:
             self._imdb_id = url_or_id

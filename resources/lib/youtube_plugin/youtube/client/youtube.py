@@ -58,7 +58,7 @@ class YouTube(LoginClient):
         overflow_token = 'Q'
         if position >= 128:
             overflow_token_iteration = position // 128
-            overflow_token = '%sE' % high[overflow_token_iteration]
+            overflow_token = f'{high[overflow_token_iteration]}E'
         low_iteration = position % len_low
 
         # at this position the iteration starts with 'I' again (after 'P')
@@ -67,7 +67,7 @@ class YouTube(LoginClient):
             position -= 128 * multiplier
         high_iteration = (position // len_low) % len_high
 
-        return 'C%s%s%sAA' % (high[high_iteration], low[low_iteration], overflow_token)
+        return f'C{high[high_iteration]}{low[low_iteration]}{overflow_token}AA'
 
     def update_watch_history(self, video_id, url):
         headers = {'Host': 'www.youtube.com',
@@ -78,22 +78,25 @@ class YouTube(LoginClient):
                    'Referer': 'https://www.youtube.com/tv',
                    'Accept-Encoding': 'gzip, deflate',
                    'Accept-Language': 'en-US,en;q=0.8,de;q=0.6'}
-        params = {'noflv': '1',
-                  'html5': '1',
-                  'video_id': video_id,
-                  'referrer': '',
-                  'eurl': 'https://www.youtube.com/tv#/watch?v=%s' % video_id,
-                  'skl': 'false',
-                  'ns': 'yt',
-                  'el': 'leanback',
-                  'ps': 'leanback'}
+        params = {
+            'noflv': '1',
+            'html5': '1',
+            'video_id': video_id,
+            'referrer': '',
+            'eurl': f'https://www.youtube.com/tv#/watch?v={video_id}',
+            'skl': 'false',
+            'ns': 'yt',
+            'el': 'leanback',
+            'ps': 'leanback',
+        }
+
         if self._access_token:
             params['access_token'] = self._access_token
 
         try:
             _ = requests.get(url, params=params, headers=headers, verify=self._verify, allow_redirects=True)
         except:
-            _context.log_error('Failed to update watch history |%s|' % traceback.print_exc())
+            _context.log_error(f'Failed to update watch history |{traceback.print_exc()}|')
 
     def get_video_streams(self, context, video_id):
         video_info = VideoInfo(context, access_token=self._access_token_tv,
@@ -103,7 +106,8 @@ class YouTube(LoginClient):
 
         # update title
         for video_stream in video_streams:
-            title = '%s (%s)' % (context.get_ui().bold(video_stream['title']), video_stream['container'])
+            title = f"{context.get_ui().bold(video_stream['title'])} ({video_stream['container']})"
+
 
             if 'audio' in video_stream and 'video' in video_stream:
                 if video_stream['audio']['bitrate'] > 0 and video_stream['video']['encoding'] and \
@@ -115,25 +119,21 @@ class YouTube(LoginClient):
                                                      video_stream['audio']['bitrate'])
 
                 elif video_stream['video']['encoding'] and video_stream['audio']['encoding']:
-                    title = '%s (%s; %s / %s)' % (context.get_ui().bold(video_stream['title']),
-                                                  video_stream['container'],
-                                                  video_stream['video']['encoding'],
-                                                  video_stream['audio']['encoding'])
-            elif 'audio' in video_stream and 'video' not in video_stream:
+                    title = f"{context.get_ui().bold(video_stream['title'])} ({video_stream['container']}; {video_stream['video']['encoding']} / {video_stream['audio']['encoding']})"
+
+            elif 'audio' in video_stream:
                 if video_stream['audio']['encoding'] and video_stream['audio']['bitrate'] > 0:
                     title = '%s (%s; %s@%d)' % (context.get_ui().bold(video_stream['title']),
                                                 video_stream['container'],
                                                 video_stream['audio']['encoding'],
                                                 video_stream['audio']['bitrate'])
 
-            elif 'audio' in video_stream or 'video' in video_stream:
-                encoding = video_stream.get('audio', dict()).get('encoding')
-                if not encoding:
-                    encoding = video_stream.get('video', dict()).get('encoding')
-                if encoding:
-                    title = '%s (%s; %s)' % (context.get_ui().bold(video_stream['title']),
-                                             video_stream['container'],
-                                             encoding)
+            elif 'video' in video_stream:
+                if encoding := video_stream.get('audio', dict()).get(
+                    'encoding'
+                ) or video_stream.get('video', dict()).get('encoding'):
+                    title = f"{context.get_ui().bold(video_stream['title'])} ({video_stream['container']}; {encoding})"
+
 
             video_stream['title'] = title
 
@@ -488,8 +488,7 @@ class YouTube(LoginClient):
             if playlist_video_id and playlist_video_id == video_id:
                 return playlist_item_id
 
-        next_page_token = json_data.get('nextPageToken', '')
-        if next_page_token:
+        if next_page_token := json_data.get('nextPageToken', ''):
             return self.get_playlist_item_id_of_video_id(playlist_id=playlist_id, video_id=video_id,
                                                          page_token=next_page_token)
 
@@ -514,9 +513,9 @@ class YouTube(LoginClient):
         """
         params = {'part': 'id'}
         if username == 'mine':
-            params.update({'mine': 'true'})
+            params['mine'] = 'true'
         else:
-            params.update({'forUsername': username})
+            params['forUsername'] = username
 
         return self.perform_v3_request(method='GET', path='channels', params=params)
 
@@ -601,9 +600,9 @@ class YouTube(LoginClient):
 
         if location:
             location = _context.get_settings().get_location()
-            if location:
-                params['location'] = location
-                params['locationRadius'] = _context.get_settings().get_location_radius()
+        if location:
+            params['location'] = location
+            params['locationRadius'] = _context.get_settings().get_location_radius()
 
         if page_token:
             params['pageToken'] = page_token
@@ -738,8 +737,7 @@ class YouTube(LoginClient):
                 break
 
         if params['type'] == 'video' and location:
-            location = _context.get_settings().get_location()
-            if location:
+            if location := _context.get_settings().get_location():
                 params['location'] = location
                 params['locationRadius'] = _context.get_settings().get_location_radius()
 
@@ -781,7 +779,7 @@ class YouTube(LoginClient):
                 sub_channel_ids = []
 
                 while sub_page_token:
-                    if sub_page_token is True:
+                    if sub_page_token:
                         sub_page_token = ''
 
                     params = {
@@ -829,7 +827,7 @@ class YouTube(LoginClient):
                         _response = requests.get(_url, {}, headers=headers, verify=self._verify, allow_redirects=True)
                     except:
                         _response = None
-                        _context.log_error('Failed |%s|' % traceback.print_exc())
+                        _context.log_error(f'Failed |{traceback.print_exc()}|')
 
                     _responses.append(_response)
 
@@ -837,9 +835,12 @@ class YouTube(LoginClient):
                 for channel_id in sub_channel_ids:
                     thread = threading.Thread(
                         target=fetch_xml,
-                        args=('https://www.youtube.com/feeds/videos.xml?channel_id=' + channel_id,
-                              responses)
+                        args=(
+                            f'https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}',
+                            responses,
+                        ),
                     )
+
                     threads.append(thread)
                     thread.start()
 
@@ -860,22 +861,30 @@ class YouTube(LoginClient):
                         yt_ns = '{http://www.youtube.com/xml/schemas/2015}'
                         media_ns = '{http://search.yahoo.com/mrss/}'
 
-                        for entry in root.findall(ns + "entry"):
-                            # empty news dictionary 
+                        for entry in root.findall(f"{ns}entry"):
+                            # empty news dictionary
                             entry_data = {
-                                'id': entry.find(yt_ns + 'videoId').text,
-                                'title': entry.find(media_ns + "group").find(media_ns + 'title').text,
-                                'channel': entry.find(ns + "author").find(ns + "name").text,
-                                'published': entry.find(ns + 'published').text,
+                                'id': entry.find(f'{yt_ns}videoId').text,
+                                'title': entry.find(f"{media_ns}group")
+                                .find(f'{media_ns}title')
+                                .text,
+                                'channel': entry.find(f"{ns}author")
+                                .find(f"{ns}name")
+                                .text,
+                                'published': entry.find(f'{ns}published').text,
                             }
+
                             # append items list 
                             _result['items'].append(entry_data)
 
                 # sorting by publish date
                 def _sort_by_date_time(e):
                     return datetime_parser.since_epoch(
-                        datetime_parser.strptime(e["published"][0:19], "%Y-%m-%dT%H:%M:%S")
+                        datetime_parser.strptime(
+                            e["published"][:19], "%Y-%m-%dT%H:%M:%S"
+                        )
                     )
+
 
                 _result['items'].sort(reverse=True, key=_sort_by_date_time)
 
@@ -930,7 +939,7 @@ class YouTube(LoginClient):
         if not params:
             params = {}
         _params = {'key': yt_config['key']}
-        _params.update(params)
+        _params |= params
 
         # headers
         if not headers:
@@ -940,11 +949,11 @@ class YouTube(LoginClient):
                     'Accept-Encoding': 'gzip, deflate'}
         # a config can decide if a token is allowed
         if self._access_token and yt_config.get('token-allowed', True) and not no_login:
-            _headers['Authorization'] = 'Bearer %s' % self._access_token
-        _headers.update(headers)
+            _headers['Authorization'] = f'Bearer {self._access_token}'
+        _headers |= headers
 
         # url
-        _url = 'https://www.googleapis.com/youtube/v3/%s' % path.strip('/')
+        _url = f"https://www.googleapis.com/youtube/v3/{path.strip('/')}"
 
         result = None
         log_params = copy.deepcopy(params)
@@ -987,7 +996,7 @@ class YouTube(LoginClient):
         if not params:
             params = {}
         _params = {'key': self._config_tv['key']}
-        _params.update(params)
+        _params |= params
 
         # headers
         if not headers:
@@ -1003,11 +1012,11 @@ class YouTube(LoginClient):
         }
 
         if self._access_token_tv:
-            _headers['Authorization'] = 'Bearer %s' % self._access_token_tv
-        _headers.update(headers)
+            _headers['Authorization'] = f'Bearer {self._access_token_tv}'
+        _headers |= headers
 
         # url
-        _url = 'https://www.googleapis.com/youtubei/v1/%s' % path.strip('/')
+        _url = f"https://www.googleapis.com/youtubei/v1/{path.strip('/')}"
 
         result = None
 

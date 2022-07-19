@@ -32,7 +32,7 @@ class LoginTokenStore(JSONStore):
         if 'last_origin' not in data['access_manager']:
             data['access_manager']['last_origin'] = 'plugin.video.youtube'
         if 'developers' not in data['access_manager']:
-            data['access_manager']['developers'] = dict()
+            data['access_manager']['developers'] = {}
 
         # clean up
         if data['access_manager']['current_user'] == 'default':
@@ -61,15 +61,13 @@ class LoginTokenStore(JSONStore):
             data['access_manager']['users'][current_user]['watch_history'] = 'HL'
 
         # ensure all users have uuid
-        uuids = list()
+        uuids = []
         uuid_update = False
         for k in list(data['access_manager']['users'].keys()):
-            c_uuid = data['access_manager']['users'][k].get('id')
-            if c_uuid:
+            if c_uuid := data['access_manager']['users'][k].get('id'):
                 uuids.append(c_uuid)
-            else:
-                if not uuid_update:
-                    uuid_update = True
+            elif not uuid_update:
+                uuid_update = True
 
         if uuid_update:
             for k in list(data['access_manager']['users'].keys()):

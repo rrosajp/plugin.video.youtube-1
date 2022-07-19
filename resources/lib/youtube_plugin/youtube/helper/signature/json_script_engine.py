@@ -33,8 +33,7 @@ class JsonScriptEngine(object):
                     params[i] = param
                     break
 
-            method = getattr(self, func)
-            if method:
+            if method := getattr(self, func):
                 _signature = method(*params)
             else:
                 raise Exception("Unknown method '%s'" % func)

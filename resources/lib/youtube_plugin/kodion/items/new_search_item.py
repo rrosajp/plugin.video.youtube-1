@@ -23,13 +23,13 @@ class NewSearchItem(DirectoryItem):
 
         item_params = {}
         if addon_id:
-            item_params.update({'addon_id': addon_id})
+            item_params['addon_id'] = addon_id
         if incognito:
-            item_params.update({'incognito': incognito})
+            item_params['incognito'] = incognito
         if channel_id:
-            item_params.update({'channel_id': channel_id})
+            item_params['channel_id'] = channel_id
         if location:
-            item_params.update({'location': location})
+            item_params['location'] = location
 
         DirectoryItem.__init__(self, name, context.create_uri([constants.paths.SEARCH, 'input'], params=item_params), image=image)
         if fanart:

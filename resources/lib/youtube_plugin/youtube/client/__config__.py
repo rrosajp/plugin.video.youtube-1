@@ -44,10 +44,18 @@ class APICheck(object):
             # users are now pasting keys into api_keys.json
             # try stripping whitespace and .apps.googleusercontent.com from keys and saving the result if they differ
             stripped_key, stripped_id, stripped_secret = self._strip_api_keys(j_key, j_id, j_secret)
-            if stripped_key and stripped_id and stripped_secret:
-                if (j_key != stripped_key) or (j_id != stripped_id) or (j_secret != stripped_secret):
-                    self._json_api['keys']['personal'] = {'api_key': stripped_key, 'client_id': stripped_id, 'client_secret': stripped_secret}
-                    self._api_jstore.save(self._json_api)
+            if (
+                stripped_key
+                and stripped_id
+                and stripped_secret
+                and (
+                    (j_key != stripped_key)
+                    or (j_id != stripped_id)
+                    or (j_secret != stripped_secret)
+                )
+            ):
+                self._json_api['keys']['personal'] = {'api_key': stripped_key, 'client_id': stripped_id, 'client_secret': stripped_secret}
+                self._api_jstore.save(self._json_api)
 
         original_key = self._settings.get_string('youtube.api.key')
         original_id = self._settings.get_string('youtube.api.id')
@@ -81,33 +89,46 @@ class APICheck(object):
         refresh_token = self._settings.get_string('kodion.refresh_token', '')
         token_expires = self._settings.get_int('kodion.access_token.expires', -1)
         last_hash = self._settings.get_string('youtube.api.last.hash', '')
-        if not self._json_am['access_manager']['users'].get(user, {}).get('access_token') or \
-                not self._json_am['access_manager']['users'].get(user, {}).get('refresh_token'):
-            if access_token and refresh_token:
-                self._json_am['access_manager']['users'][user]['access_token'] = access_token
-                self._json_am['access_manager']['users'][user]['refresh_token'] = refresh_token
-                self._json_am['access_manager']['users'][user]['token_expires'] = token_expires
-                if switch == 'own':
-                    own_key_hash = self._get_key_set_hash('own')
-                    if last_hash == self._get_key_set_hash('own', True) or \
-                            last_hash == own_key_hash:
-                        self._json_am['access_manager']['users'][user]['last_key_hash'] = own_key_hash
-                self._am_jstore.save(self._json_am)
+        if (
+            (
+                not self._json_am['access_manager']['users']
+                .get(user, {})
+                .get('access_token')
+                or not self._json_am['access_manager']['users']
+                .get(user, {})
+                .get('refresh_token')
+            )
+            and access_token
+            and refresh_token
+        ):
+            self._json_am['access_manager']['users'][user]['access_token'] = access_token
+            self._json_am['access_manager']['users'][user]['refresh_token'] = refresh_token
+            self._json_am['access_manager']['users'][user]['token_expires'] = token_expires
+            if switch == 'own':
+                own_key_hash = self._get_key_set_hash('own')
+                if last_hash in [
+                    self._get_key_set_hash('own', True),
+                    own_key_hash,
+                ]:
+                    self._json_am['access_manager']['users'][user]['last_key_hash'] = own_key_hash
+            self._am_jstore.save(self._json_am)
         if access_token or refresh_token or last_hash:
             self._settings.set_string('kodion.access_token', '')
             self._settings.set_string('kodion.refresh_token', '')
             self._settings.set_int('kodion.access_token.expires', -1)
             self._settings.set_string('youtube.api.last.hash', '')
 
-        updated_hash = self._api_keys_changed(switch)
-        if updated_hash:
-            self._context.log_warning('User: |%s| Switching API key set to |%s|' % (user, switch))
+        if updated_hash := self._api_keys_changed(switch):
+            self._context.log_warning(
+                f'User: |{user}| Switching API key set to |{switch}|'
+            )
+
             self._json_am['access_manager']['users'][user]['last_key_hash'] = updated_hash
             self._am_jstore.save(self._json_am)
             self._context.log_debug('API key set changed: Signing out')
             self._context.execute('RunPlugin(plugin://plugin.video.youtube/sign/out/?confirmed=true)')
         else:
-            self._context.log_debug('User: |%s| Using API key set: |%s|' % (user, switch))
+            self._context.log_debug(f'User: |{user}| Using API key set: |{switch}|')
 
     def get_current_switch(self):
         return 'own'
@@ -121,9 +142,7 @@ class APICheck(object):
         own_key = self._json_api['keys']['personal']['api_key']
         own_id = self._json_api['keys']['personal']['client_id']
         own_secret = self._json_api['keys']['personal']['client_secret']
-        return False if not own_key or \
-                        not own_id or \
-                        not own_secret else True
+        return bool(own_key and own_id and own_secret)
 
     def get_api_keys(self, switch):
         self._json_api = self._api_jstore.get_data()
@@ -173,39 +192,42 @@ class APICheck(object):
         stripped_id = ''.join(client_id.replace('.apps.googleusercontent.com', '').split())
         stripped_secret = ''.join(client_secret.split())
 
-        if api_key != stripped_key:
-            if stripped_key not in api_key:
-                self._context.log_debug('Personal API setting: |Key| Skipped: potentially mangled by stripping')
-                return_key = api_key
-            else:
-                self._context.log_debug('Personal API setting: |Key| had whitespace removed')
-                return_key = stripped_key
-        else:
+        if api_key == stripped_key:
             return_key = api_key
 
-        if client_id != stripped_id:
-            if stripped_id not in client_id:
-                self._context.log_debug('Personal API setting: |Id| Skipped: potentially mangled by stripping')
-                return_id = client_id
-            else:
-                googleusercontent = ''
-                if '.apps.googleusercontent.com' in client_id:
-                    googleusercontent = ' and .apps.googleusercontent.com'
-                self._context.log_debug('Personal API setting: |Id| had whitespace%s removed' % googleusercontent)
-                return_id = stripped_id
+        elif stripped_key not in api_key:
+            self._context.log_debug('Personal API setting: |Key| Skipped: potentially mangled by stripping')
+            return_key = api_key
         else:
+            self._context.log_debug('Personal API setting: |Key| had whitespace removed')
+            return_key = stripped_key
+        if client_id == stripped_id:
             return_id = client_id
 
-        if client_secret != stripped_secret:
-            if stripped_secret not in client_secret:
-                self._context.log_debug('Personal API setting: |Secret| Skipped: potentially mangled by stripping')
-                return_secret = client_secret
-            else:
-                self._context.log_debug('Personal API setting: |Secret| had whitespace removed')
-                return_secret = stripped_secret
+        elif stripped_id not in client_id:
+            self._context.log_debug('Personal API setting: |Id| Skipped: potentially mangled by stripping')
+            return_id = client_id
         else:
+            googleusercontent = (
+                ' and .apps.googleusercontent.com'
+                if '.apps.googleusercontent.com' in client_id
+                else ''
+            )
+
+            self._context.log_debug(
+                f'Personal API setting: |Id| had whitespace{googleusercontent} removed'
+            )
+
+            return_id = stripped_id
+        if client_secret == stripped_secret:
             return_secret = client_secret
 
+        elif stripped_secret not in client_secret:
+            self._context.log_debug('Personal API setting: |Secret| Skipped: potentially mangled by stripping')
+            return_secret = client_secret
+        else:
+            self._context.log_debug('Personal API setting: |Secret| had whitespace removed')
+            return_secret = stripped_secret
         return return_key, return_id, return_secret
 
 
@@ -224,8 +246,8 @@ _api_check = APICheck(__context, __settings)
 keys_changed = _api_check.changed
 current_user = _api_check.get_current_user()
 
-api = dict()
-youtube_tv = dict()
+api = {}
+youtube_tv = {}
 
 _current_switch = _api_check.get_current_switch()
 

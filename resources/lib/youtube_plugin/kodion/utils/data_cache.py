@@ -44,7 +44,7 @@ class DataCache(Storage):
         current_time = datetime.now()
         placeholders = ','.join(['?' for _ in content_ids])
         keys = [str(item) for item in content_ids]
-        query = 'SELECT * FROM %s WHERE key IN (%s)' % (self._table_name, placeholders)
+        query = f'SELECT * FROM {self._table_name} WHERE key IN ({placeholders})'
 
         self._open()
 
@@ -104,7 +104,7 @@ class DataCache(Storage):
             return sqlite3.Binary(pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL))
 
         current_time = datetime.now() + timedelta(microseconds=1)
-        query = 'REPLACE INTO %s (key,time,value) VALUES(?,?,?)' % self._table_name
+        query = f'REPLACE INTO {self._table_name} (key,time,value) VALUES(?,?,?)'
 
         self._open()
         self._execute(True, query, values=[content_id, current_time, _encode(item)])
@@ -117,7 +117,7 @@ class DataCache(Storage):
         needs_commit = True
         current_time = datetime.now() + timedelta(microseconds=1)
 
-        query = 'REPLACE INTO %s (key,time,value) VALUES(?,?,?)' % self._table_name
+        query = f'REPLACE INTO {self._table_name} (key,time,value) VALUES(?,?,?)'
 
         self._open()
 

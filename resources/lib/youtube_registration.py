@@ -44,7 +44,7 @@ def register_api_keys(addon_id, api_key, client_id, client_secret):
     context = Context(plugin_id='plugin.video.youtube')
 
     if not addon_id or addon_id == 'plugin.video.youtube':
-        context.log_error('Register API Keys: |%s| Invalid addon_id' % addon_id)
+        context.log_error(f'Register API Keys: |{addon_id}| Invalid addon_id')
         return
 
     api_jstore = APIKeyStore()
@@ -70,14 +70,14 @@ def register_api_keys(addon_id, api_key, client_id, client_secret):
     }
 
     if jkeys and jkeys == api_keys:
-        context.log_debug('Register API Keys: |%s| No update required' % addon_id)
+        context.log_debug(f'Register API Keys: |{addon_id}| No update required')
     else:
         json_api['keys']['developer'][addon_id] = api_keys
         api_jstore.save(json_api)
-        context.log_debug('Register API Keys: |%s| Keys registered' % addon_id)
+        context.log_debug(f'Register API Keys: |{addon_id}| Keys registered')
 
     developers = access_manager.get_developers()
     if not developers.get(addon_id, None):
         developers[addon_id] = access_manager.get_new_developer()
         access_manager.set_developers(developers)
-        context.log_debug('Creating developer user: |%s|' % addon_id)
+        context.log_debug(f'Creating developer user: |{addon_id}|')

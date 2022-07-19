@@ -30,8 +30,7 @@ class XbmcPlaylist(AbstractPlaylist):
         self._playlist.clear()
 
     def add(self, base_item):
-        item = xbmc_items.to_video_item(self._context, base_item)
-        if item:
+        if item := xbmc_items.to_video_item(self._context, base_item):
             self._playlist.add(base_item.get_uri(), listitem=item)
 
     def shuffle(self):
@@ -60,13 +59,14 @@ class XbmcPlaylist(AbstractPlaylist):
         if 'result' in response:
             if 'items' in response['result']:
                 return response['result']['items']
-            return []
         else:
             if 'error' in response:
                 message = response['error']['message']
                 code = response['error']['code']
-                error = 'Requested |%s| received error |%s| and code: |%s|' % (rpc_request, message, code)
+                error = f'Requested |{rpc_request}| received error |{message}| and code: |{code}|'
+
             else:
-                error = 'Requested |%s| received error |%s|' % (rpc_request, str(response))
+                error = f'Requested |{rpc_request}| received error |{str(response)}|'
             self._context.log_debug(error)
-            return []
+
+        return []

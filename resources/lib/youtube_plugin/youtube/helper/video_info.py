@@ -519,12 +519,11 @@ class VideoInfo(object):
         # cpn generation algorithm is reverse engineered from base.js.
         # In fact it works even with dummy cpn.
         cpn_alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_'
-        cpn = ''.join((cpn_alphabet[random.randint(0, 256) & 63] for _ in range(0, 16)))
-        return cpn
+        return ''.join(cpn_alphabet[random.randint(0, 256) & 63] for _ in range(16))
 
     def calculate_n(self, url):
         if not self._calculate_n:
-            self._context.log_debug('`n` was not calculated for %s' % url)
+            self._context.log_debug(f'`n` was not calculated for {url}')
             return url
 
         parsed_query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(url).query))
@@ -532,14 +531,12 @@ class VideoInfo(object):
         if parsed_query.get('ratebypass', 'no') != 'yes' and 'n' in parsed_query:
             # Cipher n to get the updated value
             initial_n = list(parsed_query['n'])
-            new_n = self._calculate_n.calculate_n(initial_n)
-            if new_n:
+            if new_n := self._calculate_n.calculate_n(initial_n):
                 parsed_query['n'] = new_n
                 parsed_query['ratebypass'] = 'yes'
                 parsed_url = urllib.parse.urlsplit(url)
-                url = '%s://%s%s?%s' % \
-                      (parsed_url.scheme, parsed_url.netloc,
-                       parsed_url.path, urllib.parse.urlencode(parsed_query))
+                url = f'{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?{urllib.parse.urlencode(parsed_query)}'
+
 
         return url
 
@@ -550,7 +547,7 @@ class VideoInfo(object):
         headers = self.MOBILE_HEADERS.copy()
         headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
         if self._access_token:
-            headers['Authorization'] = 'Bearer %s' % self._access_token
+            headers['Authorization'] = f'Bearer {self._access_token}'
 
         url = 'https://www.youtube.com/watch?v={video_id}'.format(video_id=video_id)
         cookies = {'CONSENT': 'YES+cb.20210615-14-p0.en+FX+294'}
@@ -564,7 +561,7 @@ class VideoInfo(object):
         headers = self.MOBILE_HEADERS.copy()
         headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
         if self._access_token:
-            headers['Authorization'] = 'Bearer %s' % self._access_token
+            headers['Authorization'] = f'Bearer {self._access_token}'
 
         url = 'https://www.youtube.com/embed/{video_id}'.format(video_id=video_id)
         cookies = {'CONSENT': 'YES+cb.20210615-14-p0.en+FX+294'}
@@ -591,28 +588,29 @@ class VideoInfo(object):
 
     @staticmethod
     def get_player_config(html):
-        config = {}
-
-        found = re.search(
-            r'window\.ytplayer\s*=\s*{}\s*;\s*ytcfg\.set\((?P<config>.+?)\)\s*;\s*(?:ytcfg|var setMessage\s*=\s*)', html
+        return (
+            json.loads(found['config'])
+            if (
+                found := re.search(
+                    r'window\.ytplayer\s*=\s*{}\s*;\s*ytcfg\.set\((?P<config>.+?)\)\s*;\s*(?:ytcfg|var setMessage\s*=\s*)',
+                    html,
+                )
+            )
+            else {}
         )
-
-        if found:
-            config = json.loads(found.group('config'))
-
-        return config
 
     @staticmethod
     def get_player_response(html):
-        response = {}
-
-        found = re.search(
-                r'ytInitialPlayerResponse\s*=\s*(?P<response>{.+?})\s*;\s*(?:var\s+meta|</script|\n)', html
+        return (
+            json.loads(found['response'])
+            if (
+                found := re.search(
+                    r'ytInitialPlayerResponse\s*=\s*(?P<response>{.+?})\s*;\s*(?:var\s+meta|</script|\n)',
+                    html,
+                )
+            )
+            else {}
         )
-        if found:
-            response = json.loads(found.group('response'))
-
-        return response
 
     def get_player_js(self, html, javascript_url=''):
         def _normalize(url):
@@ -620,8 +618,8 @@ class VideoInfo(object):
                 url = ''
 
             if url and not url.startswith('http'):
-                url = 'https://www.youtube.com/%s' % \
-                      url.lstrip('/').replace('www.youtube.com/', '')
+                url = f"https://www.youtube.com/{url.lstrip('/').replace('www.youtube.com/', '')}"
+
 
             if url:
                 self._data_cache.set('player_javascript', json.dumps({'url': url}))
@@ -644,7 +642,7 @@ class VideoInfo(object):
             found = re.search(r'"jsUrl":"(?P<url>[^"]*base.js)"', html)
 
             if found:
-                javascript_url = found.group('url')
+                javascript_url = found['url']
 
         javascript_url = _normalize(javascript_url)
         cache_key = urllib.parse.quote(javascript_url)
@@ -676,7 +674,7 @@ class VideoInfo(object):
 
     def _load_manifest(self, url, video_id, meta_info=None, playback_stats=None):
         headers = self.MOBILE_HEADERS.copy()
-        headers['Referer'] = 'https://www.youtube.com/watch?v=%s' % video_id
+        headers['Referer'] = f'https://www.youtube.com/watch?v={video_id}'
         headers['Origin'] = 'https://www.youtube.com'
 
         curl_headers = self.make_curl_headers(headers, cookies=None)
@@ -695,7 +693,7 @@ class VideoInfo(object):
                       'channel': {},
                       'images': {},
                       'subtitles': []}
-        meta_info = meta_info if meta_info else _meta_info
+        meta_info = meta_info or _meta_info
         streams = []
         # The playlist might include a #EXT-X-MEDIA entry, but it's usually for
         # a small default stream with itag 133 (240p) and can be ignored.
@@ -715,7 +713,7 @@ class VideoInfo(object):
                             'headers': curl_headers,
                             'playback_stats': playback_stats
                             }
-            video_stream.update(yt_format)
+            video_stream |= yt_format
             streams.append(video_stream)
         return streams
 

@@ -36,12 +36,17 @@ def my_subscriptions_to_items(provider, context, json_data, do_filter=False):
         channel = channel.replace(',', '')
         if PY2:
             channel = channel.encode('utf-8', 'ignore')
-        if not do_filter or (do_filter and (not black_list) and (channel in filter_list)) or \
-                (do_filter and black_list and (channel not in filter_list)):
+        if (
+            not do_filter
+            or not black_list
+            and channel in filter_list
+            or black_list
+            and channel not in filter_list
+        ):
             video_id = item['id']
             item_params = {'video_id': video_id}
             if incognito:
-                item_params.update({'incognito': incognito})
+                item_params['incognito'] = incognito
             item_uri = context.create_uri(['play'], item_params)
             video_item = VideoItem(item['title'], uri=item_uri)
             if incognito:
@@ -60,7 +65,7 @@ def my_subscriptions_to_items(provider, context, json_data, do_filter=False):
     next_page_token = json_data.get('next_page_token', '')
     if next_page_token or json_data.get('continue', False):
         new_params = {}
-        new_params.update(context.get_params())
+        new_params |= context.get_params()
         new_params['next_page_token'] = next_page_token
         new_params['offset'] = int(json_data.get('offset', 0))
 
@@ -84,7 +89,7 @@ def tv_videos_to_items(provider, context, json_data):
         video_id = item['id']
         item_params = {'video_id': video_id}
         if incognito:
-            item_params.update({'incognito': incognito})
+            item_params['incognito'] = incognito
         item_uri = context.create_uri(['play'], item_params)
         video_item = VideoItem(item['title'], uri=item_uri)
         if incognito:
@@ -104,7 +109,7 @@ def tv_videos_to_items(provider, context, json_data):
     next_page_token = json_data.get('next_page_token', '')
     if next_page_token or json_data.get('continue', False):
         new_params = {}
-        new_params.update(context.get_params())
+        new_params |= context.get_params()
         new_params['next_page_token'] = next_page_token
         new_params['offset'] = int(json_data.get('offset', 0))
 
@@ -133,7 +138,7 @@ def saved_playlists_to_items(provider, context, json_data):
 
         item_params = {}
         if incognito:
-            item_params.update({'incognito': incognito})
+            item_params['incognito'] = incognito
 
         if channel_id:
             item_uri = context.create_uri(['channel', channel_id, 'playlist', playlist_id], item_params)
@@ -153,7 +158,7 @@ def saved_playlists_to_items(provider, context, json_data):
     next_page_token = json_data.get('next_page_token', '')
     if next_page_token or json_data.get('continue', False):
         new_params = {}
-        new_params.update(context.get_params())
+        new_params |= context.get_params()
         new_params['next_page_token'] = next_page_token
         new_params['offset'] = int(json_data.get('offset', 0))
 

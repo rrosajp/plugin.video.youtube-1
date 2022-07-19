@@ -51,8 +51,9 @@ class XbmcContextUI(AbstractContextUI):
 
         # Starting with Gotham (13.X > ...)
         dialog = xbmcgui.Dialog()
-        result = dialog.input(title, utils.to_unicode(default), type=xbmcgui.INPUT_ALPHANUM)
-        if result:
+        if result := dialog.input(
+            title, utils.to_unicode(default), type=xbmcgui.INPUT_ALPHANUM
+        ):
             text = utils.to_unicode(result)
             return True, text
 
@@ -60,8 +61,7 @@ class XbmcContextUI(AbstractContextUI):
 
     def on_numeric_input(self, title, default=''):
         dialog = xbmcgui.Dialog()
-        result = dialog.input(title, str(default), type=xbmcgui.INPUT_NUMERIC)
-        if result:
+        if result := dialog.input(title, str(default), type=xbmcgui.INPUT_NUMERIC):
             return True, int(result)
 
         return False, None
@@ -93,8 +93,7 @@ class XbmcContextUI(AbstractContextUI):
 
         _dict = {}
         _items = []
-        i = 0
-        for item in items:
+        for i, item in enumerate(items):
             if isinstance(item, tuple):
                 if use_details:
                     new_item = xbmcgui.ListItem(label=item[0], label2=item[1])
@@ -107,8 +106,6 @@ class XbmcContextUI(AbstractContextUI):
             else:
                 _dict[i] = i
                 _items.append(item)
-
-            i += 1
 
         dialog = xbmcgui.Dialog()
         if use_details:
@@ -152,8 +149,9 @@ class XbmcContextUI(AbstractContextUI):
         self._xbmc_addon.openSettings()
 
     def refresh_container(self):
-        script_uri = "{}/resources/lib/youtube_plugin/refresh.py".format(self._xbmc_addon.getAddonInfo('path'))
-        xbmc.executebuiltin('RunScript(%s)' % script_uri)
+        script_uri = f"{self._xbmc_addon.getAddonInfo('path')}/resources/lib/youtube_plugin/refresh.py"
+
+        xbmc.executebuiltin(f'RunScript({script_uri})')
 
     @staticmethod
     def get_info_label(value):
@@ -190,6 +188,6 @@ class XbmcContextUI(AbstractContextUI):
         cid = xbmcgui.Window(xbmcgui.getCurrentWindowId()).getFocusId()
         try:
             current_position = int(self.get_info_label('Container.Position')) + 1
-            self._context.execute('SetFocus(%s,%s)' % (cid, str(current_position)))
+            self._context.execute(f'SetFocus({cid},{str(current_position)})')
         except ValueError:
             pass

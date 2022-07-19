@@ -45,10 +45,11 @@ class JSONStore(object):
     def save(self, data):
         if data != self._data:
             self._data = deepcopy(data)
-            if not xbmcvfs.exists(self.base_path):
-                if not self.make_dirs(self.base_path):
-                    logger.log_debug('JSONStore Save |{filename}| failed to create directories.'.format(filename=self.filename.encode("utf-8")))
-                    return
+            if not xbmcvfs.exists(self.base_path) and not self.make_dirs(
+                self.base_path
+            ):
+                logger.log_debug('JSONStore Save |{filename}| failed to create directories.'.format(filename=self.filename.encode("utf-8")))
+                return
             with open(self.filename, 'w') as jsonfile:
                 logger.log_debug('JSONStore Save |{filename}|'.format(filename=self.filename.encode("utf-8")))
                 json.dump(self._data, jsonfile, indent=4, sort_keys=True)
@@ -60,7 +61,7 @@ class JSONStore(object):
                 self._data = data
                 logger.log_debug('JSONStore Load |{filename}|'.format(filename=self.filename.encode("utf-8")))
         else:
-            self._data = dict()
+            self._data = {}
 
     def get_data(self):
         return deepcopy(self._data)
