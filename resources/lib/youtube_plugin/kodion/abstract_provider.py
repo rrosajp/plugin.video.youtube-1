@@ -162,8 +162,6 @@ class AbstractProvider(object):
                 directory_item.set_context_menu(context_menu)
 
             return directory_items
-        else:
-            pass
 
     def _internal_watch_later(self, context, re_match):
         self.on_watch_later(context, re_match)
@@ -188,9 +186,6 @@ class AbstractProvider(object):
                 video_item.set_context_menu(context_menu)
 
             return video_items
-        else:
-            # do something
-            pass
 
     @property
     def data_cache(self):
@@ -228,8 +223,9 @@ class AbstractProvider(object):
 
             folder_path = context.get_ui().get_info_label('Container.FolderPath')
             query = None
-            if (folder_path.startswith('plugin://%s' % context.get_id()) and
-                    re.match('.+/(?:query|input)/.*', folder_path)):
+            if folder_path.startswith(f'plugin://{context.get_id()}') and re.match(
+                '.+/(?:query|input)/.*', folder_path
+            ):
                 cached_query = self.data_cache.get_item(self.data_cache.ONE_DAY, 'search_query')
                 #  came from page 1 of search query by '..'/back, user doesn't want to input on this path
                 if cached_query and cached_query.get('search_query', {}).get('query'):
@@ -280,14 +276,11 @@ class AbstractProvider(object):
             return self.on_search(query, context, re_match)
         else:
             context.set_content_type(constants.content_type.FILES)
-            result = []
-
             location = str(context.get_param('location', False)).lower() == 'true'
 
             # 'New Search...'
             new_search_item = items.NewSearchItem(context, fanart=self.get_alternative_fanart(context), location=location)
-            result.append(new_search_item)
-
+            result = [new_search_item]
             for search in search_history.list():
                 # little fallback for old history entries
                 if isinstance(search, items.DirectoryItem):

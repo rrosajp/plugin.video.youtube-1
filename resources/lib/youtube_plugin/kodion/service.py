@@ -33,16 +33,17 @@ def get_stamp_diff(current_stamp):
     if not current_stamp:
         return 86400  # 24 hrs
     try:
-        stamp_datetime = datetime(*(strptime(current_stamp, stamp_format)[0:6]))
+        stamp_datetime = datetime(*strptime(current_stamp, stamp_format)[:6])
     except ValueError:  # current_stamp has no microseconds
         stamp_format = '%Y-%m-%d %H:%M:%S'
-        stamp_datetime = datetime(*(strptime(current_stamp, stamp_format)[0:6]))
+        stamp_datetime = datetime(*strptime(current_stamp, stamp_format)[:6])
 
-    time_delta = current_datetime - stamp_datetime
-    total_seconds = 0
-    if time_delta:
-        total_seconds = ((time_delta.seconds + time_delta.days * 24 * 3600) * 10 ** 6) // (10 ** 6)
-    return total_seconds
+    return (
+        ((time_delta.seconds + time_delta.days * 24 * 3600) * 10**6)
+        // (10**6)
+        if (time_delta := current_datetime - stamp_datetime)
+        else 0
+    )
 
 
 def run():

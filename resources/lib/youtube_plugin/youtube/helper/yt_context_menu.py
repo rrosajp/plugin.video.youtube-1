@@ -12,14 +12,8 @@ from ... import kodion
 
 
 def append_more_for_video(context_menu, provider, context, video_id, is_logged_in=False, refresh_container=False):
-    _is_logged_in = '0'
-    if is_logged_in:
-        _is_logged_in = '1'
-
-    _refresh_container = '0'
-    if refresh_container:
-        _refresh_container = '1'
-
+    _is_logged_in = '1' if is_logged_in else '0'
+    _refresh_container = '1' if refresh_container else '0'
     context_menu.append((context.localize(provider.LOCAL_MAP['youtube.video.more']),
                          'RunPlugin(%s)' % context.create_uri(['video', 'more'],
                                                               {'video_id': video_id,
@@ -120,10 +114,7 @@ def append_add_my_subscriptions_filter(context_menu, provider, context, channel_
 
 
 def append_rate_video(context_menu, provider, context, video_id, refresh_container=False):
-    if refresh_container:
-        refresh_container = '1'
-    else:
-        refresh_container = '0'
+    refresh_container = '1' if refresh_container else '0'
     context_menu.append((context.localize(provider.LOCAL_MAP['youtube.video.rate']),
                          'RunPlugin(%s)' % context.create_uri(['video', 'rate'],
                                                               {'video_id': video_id,
@@ -140,7 +131,12 @@ def append_watch_later(context_menu, provider, context, playlist_id, video_id):
 
 def append_go_to_channel(context_menu, provider, context, channel_id, channel_name):
     text = context.localize(provider.LOCAL_MAP['youtube.go_to_channel']) % context.get_ui().bold(channel_name)
-    context_menu.append((text, 'Container.Update(%s)' % context.create_uri(['channel', channel_id])))
+    context_menu.append(
+        (
+            text,
+            f"Container.Update({context.create_uri(['channel', channel_id])})",
+        )
+    )
 
 
 def append_related_videos(context_menu, provider, context, video_id):
@@ -150,8 +146,12 @@ def append_related_videos(context_menu, provider, context, video_id):
 
 
 def append_clear_watch_history(context_menu, provider, context):
-    context_menu.append((context.localize(provider.LOCAL_MAP['youtube.clear_history']),
-                         'Container.Update(%s)' % context.create_uri(['history', 'clear'])))
+    context_menu.append(
+        (
+            context.localize(provider.LOCAL_MAP['youtube.clear_history']),
+            f"Container.Update({context.create_uri(['history', 'clear'])})",
+        )
+    )
 
 
 def append_refresh(context_menu, provider, context):

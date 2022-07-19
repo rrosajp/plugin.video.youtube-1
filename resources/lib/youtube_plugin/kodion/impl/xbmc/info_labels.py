@@ -32,11 +32,8 @@ def _process_string_value(info_labels, name, param):
 def _process_audio_rating(info_labels, param):
     if param is not None:
         rating = int(param)
-        if rating > 5:
-            rating = 5
-        if rating < 0:
-            rating = 0
-
+        rating = min(rating, 5)
+        rating = max(rating, 0)
         info_labels['rating'] = rating
 
 
@@ -53,10 +50,8 @@ def _process_video_duration(info_labels, param):
 def _process_video_rating(info_labels, param):
     if param is not None:
         rating = float(param)
-        if rating > 10.0:
-            rating = 10.0
-        if rating < 0.0:
-            rating = 0.0
+        rating = min(rating, 10.0)
+        rating = max(rating, 0.0)
         info_labels['rating'] = rating
 
 
@@ -164,7 +159,7 @@ def create_from_item(base_item):
         _process_list_value(info_labels, 'cast', base_item.get_cast())
 
     # Audio and Video
-    if isinstance(base_item, AudioItem) or isinstance(base_item, VideoItem):
+    if isinstance(base_item, (AudioItem, VideoItem)):
         # 'title' = 'Blow Your Head Off' (string)
         _process_string_value(info_labels, 'title', base_item.get_title())
 

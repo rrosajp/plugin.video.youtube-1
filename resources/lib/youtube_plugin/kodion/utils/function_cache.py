@@ -71,10 +71,7 @@ class FunctionCache(Storage):
 
         # only return before cached data
         data, cache_id = self._get_cached_data(partial_func)
-        if data is not None:
-            return data[0]
-
-        return None
+        return data[0] if data is not None else None
 
     def get(self, seconds, func, *args, **keywords):
         """
@@ -98,12 +95,7 @@ class FunctionCache(Storage):
             cached_data = data[0]
             cached_time = data[1]
 
-        diff_seconds = 0
-
-        if cached_time is not None:
-            # this is so stupid, but we have the function 'total_seconds' only starting with python 2.7
-            diff_seconds = self.get_seconds_diff(cached_time)
-
+        diff_seconds = 0 if cached_time is None else self.get_seconds_diff(cached_time)
         if cached_data is None or diff_seconds > seconds:
             cached_data = partial_func()
             self._set(cache_id, cached_data)

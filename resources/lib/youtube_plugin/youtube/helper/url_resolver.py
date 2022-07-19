@@ -35,15 +35,14 @@ class YouTubeResolver(AbstractResolver):
         AbstractResolver.__init__(self)
 
     def supports_url(self, url, url_components):
-        if url_components.hostname == 'www.youtube.com' or url_components.hostname == 'youtube.com':
+        if url_components.hostname in ['www.youtube.com', 'youtube.com']:
             if url_components.path.lower() in ['/redirect', '/user']:
                 return True
 
             if url_components.path.lower().startswith('/user'):
                 return True
 
-            re_match = self.RE_USER_NAME.match(url)
-            if re_match:
+            if re_match := self.RE_USER_NAME.match(url):
                 return True
 
         return False
@@ -64,8 +63,8 @@ class YouTubeResolver(AbstractResolver):
                 if response.status_code == 200:
                     match = re.search(r'<meta itemprop="channelId" content="(?P<channel_id>.+)">', response.text)
                     if match:
-                        channel_id = match.group('channel_id')
-                        return 'https://www.youtube.com/channel/%s' % channel_id
+                        channel_id = match['channel_id']
+                        return f'https://www.youtube.com/channel/{channel_id}'
             except:
                 # do nothing
                 pass
@@ -80,10 +79,7 @@ class YouTubeResolver(AbstractResolver):
             return _load_page(url)
 
         re_match = self.RE_USER_NAME.match(url)
-        if re_match:
-            return _load_page(url)
-
-        return url
+        return _load_page(url) if re_match else url
 
 
 class CommonResolver(AbstractResolver, list):
@@ -188,7 +184,4 @@ class UrlResolver(object):
     def resolve(self, url):
         function_cache = self._context.get_function_cache()
         resolved_url = function_cache.get(FunctionCache.ONE_DAY, self._resolve, url)
-        if not resolved_url or resolved_url == '/':
-            return url
-
-        return resolved_url
+        return url if not resolved_url or resolved_url == '/' else resolved_url

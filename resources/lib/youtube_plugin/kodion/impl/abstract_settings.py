@@ -57,10 +57,7 @@ class AbstractSettings(object):
         if value is None or value == '':
             return default_value
 
-        if value != 'false' and value != 'true':
-            return default_value
-
-        return value == 'true'
+        return default_value if value not in ['false', 'true'] else value == 'true'
 
     def get_items_per_page(self):
         return self.get_int(constants.setting.ITEMS_PER_PAGE, 50, lambda x: (x + 1) * 5)
@@ -137,9 +134,11 @@ class AbstractSettings(object):
         return self.get_bool(constants.setting.ALLOW_DEV_KEYS, False)
 
     def use_dash_videos(self):
-        if not self.use_dash():
-            return False
-        return self.get_bool(constants.setting.DASH_VIDEOS, False)
+        return (
+            self.get_bool(constants.setting.DASH_VIDEOS, False)
+            if self.use_dash()
+            else False
+        )
 
     def include_hdr(self):
         if self.get_mpd_quality() == 'mp4':
@@ -147,9 +146,11 @@ class AbstractSettings(object):
         return self.get_bool(constants.setting.DASH_INCL_HDR, False)
 
     def use_dash_live_streams(self):
-        if not self.use_dash():
-            return False
-        return self.get_bool(constants.setting.DASH_LIVE_STREAMS, False)
+        return (
+            self.get_bool(constants.setting.DASH_LIVE_STREAMS, False)
+            if self.use_dash()
+            else False
+        )
 
     def httpd_port(self):
         return self.get_int(constants.setting.HTTPD_PORT, 50152)
@@ -234,10 +235,14 @@ class AbstractSettings(object):
             return quality
 
         quality_map = self.__get_mpd_quality_map()
-        qualities = sorted([x for x in list(quality_map.values())
-                            if isinstance(x, int) and x <= quality], reverse=True)
-
-        return qualities
+        return sorted(
+            [
+                x
+                for x in list(quality_map.values())
+                if isinstance(x, int) and x <= quality
+            ],
+            reverse=True,
+        )
 
     def mpd_30fps_limit(self):
         if self.include_hdr() or isinstance(self.get_mpd_quality(), str):

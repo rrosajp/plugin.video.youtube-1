@@ -88,7 +88,10 @@ class LoginClient(object):
         try:
             json_data = result.json()
             if 'error' in json_data:
-                context.log_error('Revoke failed: Code: |%s| JSON: |%s|' % (str(result.status_code), json_data))
+                context.log_error(
+                    f'Revoke failed: Code: |{str(result.status_code)}| JSON: |{json_data}|'
+                )
+
                 json_data.update({'code': str(result.status_code)})
                 raise LoginException(json_data)
         except ValueError:
@@ -96,7 +99,10 @@ class LoginClient(object):
 
         if result.status_code != requests.codes.ok:
             response_dump = self._get_response_dump(result, json_data)
-            context.log_error('Revoke failed: Code: |%s| Response dump: |%s|' % (str(result.status_code), response_dump))
+            context.log_error(
+                f'Revoke failed: Code: |{str(result.status_code)}| Response dump: |{response_dump}|'
+            )
+
             raise LoginException('Logout Failed')
 
     def refresh_token_tv(self, refresh_token):
@@ -122,15 +128,20 @@ class LoginClient(object):
         url = 'https://www.googleapis.com/oauth2/v4/token'
 
         config_type = self._get_config_type(client_id, client_secret)
-        context.log_debug('Refresh token: Config: |%s| Client id [:5]: |%s| Client secret [:5]: |%s|' %
-                          (config_type, client_id[:5], client_secret[:5]))
+        context.log_debug(
+            f'Refresh token: Config: |{config_type}| Client id [:5]: |{client_id[:5]}| Client secret [:5]: |{client_secret[:5]}|'
+        )
+
 
         result = requests.post(url, data=post_data, headers=headers, verify=self._verify)
 
         try:
             json_data = result.json()
             if 'error' in json_data:
-                context.log_error('Refresh Failed: Code: |%s| JSON: |%s|' % (str(result.status_code), json_data))
+                context.log_error(
+                    f'Refresh Failed: Code: |{str(result.status_code)}| JSON: |{json_data}|'
+                )
+
                 json_data.update({'code': str(result.status_code)})
                 if json_data['error'] == 'invalid_grant' and json_data['code'] == '400':
                     raise InvalidGrant(json_data)
@@ -140,8 +151,10 @@ class LoginClient(object):
 
         if result.status_code != requests.codes.ok:
             response_dump = self._get_response_dump(result, json_data)
-            context.log_error('Refresh failed: Config: |%s| Client id [:5]: |%s| Client secret [:5]: |%s| Code: |%s| Response dump |%s|' %
-                              (config_type, client_id[:5], client_secret[:5], str(result.status_code), response_dump))
+            context.log_error(
+                f'Refresh failed: Config: |{config_type}| Client id [:5]: |{client_id[:5]}| Client secret [:5]: |{client_secret[:5]}| Code: |{str(result.status_code)}| Response dump |{response_dump}|'
+            )
+
             raise LoginException('Login Failed')
 
         if result.headers.get('content-type', '').startswith('application/json'):
@@ -176,8 +189,10 @@ class LoginClient(object):
         url = 'https://www.googleapis.com/oauth2/v4/token'
 
         config_type = self._get_config_type(client_id, client_secret)
-        context.log_debug('Requesting access token: Config: |%s| Client id [:5]: |%s| Client secret [:5]: |%s|' %
-                          (config_type, client_id[:5], client_secret[:5]))
+        context.log_debug(
+            f'Requesting access token: Config: |{config_type}| Client id [:5]: |{client_id[:5]}| Client secret [:5]: |{client_secret[:5]}|'
+        )
+
 
         result = requests.post(url, data=post_data, headers=headers, verify=self._verify)
 
@@ -186,7 +201,10 @@ class LoginClient(object):
             json_data = result.json()
             if 'error' in json_data:
                 if json_data['error'] != u'authorization_pending':
-                    context.log_error('Requesting access token: Code: |%s| JSON: |%s|' % (str(result.status_code), json_data))
+                    context.log_error(
+                        f'Requesting access token: Code: |{str(result.status_code)}| JSON: |{json_data}|'
+                    )
+
                     json_data.update({'code': str(result.status_code)})
                     raise LoginException(json_data)
                 else:
@@ -196,20 +214,20 @@ class LoginClient(object):
 
         if (result.status_code != requests.codes.ok) and not authorization_pending:
             response_dump = self._get_response_dump(result, json_data)
-            context.log_error('Requesting access token: Config: |%s| Client id [:5]: |%s| Client secret [:5]: |%s| Code: |%s| Response dump |%s|' %
-                              (config_type, client_id[:5], client_secret[:5], str(result.status_code), response_dump))
-            raise LoginException('Login Failed: Code %s' % str(result.status_code))
+            context.log_error(
+                f'Requesting access token: Config: |{config_type}| Client id [:5]: |{client_id[:5]}| Client secret [:5]: |{client_secret[:5]}| Code: |{str(result.status_code)}| Response dump |{response_dump}|'
+            )
+
+            raise LoginException(f'Login Failed: Code {str(result.status_code)}')
 
         if result.headers.get('content-type', '').startswith('application/json'):
-            if json_data:
-                return json_data
-            else:
-                return result.json()
-        else:
-            response_dump = self._get_response_dump(result, json_data)
-            context.log_error('Requesting access token: Config: |%s| Client id [:5]: |%s| Client secret [:5]: |%s| Code: |%s| Response dump |%s|' %
-                              (config_type, client_id[:5], client_secret[:5], str(result.status_code), response_dump))
-            raise LoginException('Login Failed: Unknown response')
+            return json_data or result.json()
+        response_dump = self._get_response_dump(result, json_data)
+        context.log_error(
+            f'Requesting access token: Config: |{config_type}| Client id [:5]: |{client_id[:5]}| Client secret [:5]: |{client_secret[:5]}| Code: |{str(result.status_code)}| Response dump |{response_dump}|'
+        )
+
+        raise LoginException('Login Failed: Unknown response')
 
     def request_device_and_user_code_tv(self):
         client_id = str(self.CONFIGS['youtube-tv']['id'])
@@ -230,15 +248,20 @@ class LoginClient(object):
         url = 'https://accounts.google.com/o/oauth2/device/code'
 
         config_type = self._get_config_type(client_id)
-        context.log_debug('Requesting device and user code: Config: |%s| Client id [:5]: |%s|' %
-                          (config_type, client_id[:5]))
+        context.log_debug(
+            f'Requesting device and user code: Config: |{config_type}| Client id [:5]: |{client_id[:5]}|'
+        )
+
 
         result = requests.post(url, data=post_data, headers=headers, verify=self._verify)
 
         try:
             json_data = result.json()
             if 'error' in json_data:
-                context.log_error('Requesting device and user code failed: Code: |%s| JSON: |%s|' % (str(result.status_code), json_data))
+                context.log_error(
+                    f'Requesting device and user code failed: Code: |{str(result.status_code)}| JSON: |{json_data}|'
+                )
+
                 json_data.update({'code': str(result.status_code)})
                 raise LoginException(json_data)
         except ValueError:
@@ -246,20 +269,20 @@ class LoginClient(object):
 
         if result.status_code != requests.codes.ok:
             response_dump = self._get_response_dump(result, json_data)
-            context.log_error('Requesting device and user code failed: Config: |%s| Client id [:5]: |%s| Code: |%s| Response dump |%s|' %
-                              (config_type, client_id[:5], str(result.status_code), response_dump))
+            context.log_error(
+                f'Requesting device and user code failed: Config: |{config_type}| Client id [:5]: |{client_id[:5]}| Code: |{str(result.status_code)}| Response dump |{response_dump}|'
+            )
+
             raise LoginException('Login Failed')
 
         if result.headers.get('content-type', '').startswith('application/json'):
-            if json_data:
-                return json_data
-            else:
-                return result.json()
-        else:
-            response_dump = self._get_response_dump(result, json_data)
-            context.log_error('Requesting access token: Config: |%s| Client id [:5]: |%s| Code: |%s| Response dump |%s|' %
-                              (config_type, client_id[:5], str(result.status_code), response_dump))
-            raise LoginException('Login Failed: Unknown response')
+            return json_data or result.json()
+        response_dump = self._get_response_dump(result, json_data)
+        context.log_error(
+            f'Requesting access token: Config: |{config_type}| Client id [:5]: |{client_id[:5]}| Code: |{str(result.status_code)}| Response dump |{response_dump}|'
+        )
+
+        raise LoginException('Login Failed: Unknown response')
 
     def get_access_token(self):
         return self._access_token
@@ -324,20 +347,17 @@ class LoginClient(object):
             return 'None'
         elif using_conf_tv:
             return 'YouTube-TV'
-        elif using_conf_main:
-            return 'YouTube-Kodi'
         else:
-            return 'Unknown'
+            return 'YouTube-Kodi'
 
     @staticmethod
     def _get_response_dump(response, json_data=None):
         if json_data:
             return json_data
-        else:
+        try:
+            return response.json()
+        except ValueError:
             try:
-                return response.json()
-            except ValueError:
-                try:
-                    return response.text
-                except:
-                    return 'None'
+                return response.text
+            except:
+                return 'None'

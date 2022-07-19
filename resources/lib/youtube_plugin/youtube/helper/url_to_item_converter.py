@@ -37,14 +37,12 @@ class UrlToItemConverter(object):
         if url_components.hostname.lower() in ('youtube.com', 'www.youtube.com', 'm.youtube.com'):
             params = dict(urllib.parse.parse_qsl(url_components.query))
             if url_components.path.lower() == '/watch':
-                video_id = params.get('v', '')
-                if video_id:
+                if video_id := params.get('v', ''):
                     plugin_uri = context.create_uri(['play'], {'video_id': video_id})
                     video_item = VideoItem('', plugin_uri)
                     self._video_id_dict[video_id] = video_item
 
-                playlist_id = params.get('list', '')
-                if playlist_id:
+                if playlist_id := params.get('list', ''):
                     if self._flatten:
                         self._playlist_ids.append(playlist_id)
                     else:
@@ -52,8 +50,7 @@ class UrlToItemConverter(object):
                         playlist_item.set_fanart(provider.get_fanart(context))
                         self._playlist_id_dict[playlist_id] = playlist_item
             elif url_components.path.lower() == '/playlist':
-                playlist_id = params.get('list', '')
-                if playlist_id:
+                if playlist_id := params.get('list', ''):
                     if self._flatten:
                         self._playlist_ids.append(playlist_id)
                     else:

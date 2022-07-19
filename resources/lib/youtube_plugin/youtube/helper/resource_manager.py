@@ -35,11 +35,11 @@ class ResourceManager(object):
         return self._playlist_data.get(playlist_id, {})
 
     def _update_channels(self, channel_ids):
-        result = dict()
-        json_data = dict()
-        channel_ids_to_update = list()
-        channel_ids_cached = list()
-        updated_channel_ids = list()
+        result = {}
+        json_data = {}
+        channel_ids_to_update = []
+        channel_ids_cached = []
+        updated_channel_ids = []
 
         data_cache = self._context.get_data_cache()
         function_cache = self._context.get_function_cache()
@@ -55,7 +55,7 @@ class ResourceManager(object):
                     self._context.log_debug('Channel "mine" not found: %s' % json_data)
                     channel_id = None
 
-                json_data = dict()
+                json_data = {}
 
             if channel_id:
                 updated_channel_ids.append(channel_id)
@@ -68,19 +68,26 @@ class ResourceManager(object):
                 channel_ids_to_update.append(channel_id)
             else:
                 channel_ids_cached.append(channel_id)
-        result.update(channel_data)
-        if len(channel_ids_cached) > 0:
-            self._context.log_debug('Found cached data for channels |%s|' % ', '.join(channel_ids_cached))
+        result |= channel_data
+        if channel_ids_cached:
+            self._context.log_debug(
+                f"Found cached data for channels |{', '.join(channel_ids_cached)}|"
+            )
 
-        if len(channel_ids_to_update) > 0:
-            self._context.log_debug('No data for channels |%s| cached' % ', '.join(channel_ids_to_update))
 
-            data = []
+        if channel_ids_to_update:
+            self._context.log_debug(
+                f"No data for channels |{', '.join(channel_ids_to_update)}| cached"
+            )
+
+
             list_of_50s = self._make_list_of_50(channel_ids_to_update)
-            for list_of_50 in list_of_50s:
-                data.append(self._youtube_client.get_channels(list_of_50))
+            data = [
+                self._youtube_client.get_channels(list_of_50)
+                for list_of_50 in list_of_50s
+            ]
 
-            channel_data = dict()
+            channel_data = {}
             yt_items = []
             for response in data:
                 yt_items += response.get('items', [])
@@ -91,18 +98,18 @@ class ResourceManager(object):
                 result[channel_id] = yt_item
 
             data_cache.set_all(channel_data)
-            self._context.log_debug('Cached data for channels |%s|' % ', '.join(list(channel_data.keys())))
+            self._context.log_debug(
+                f"Cached data for channels |{', '.join(list(channel_data.keys()))}|"
+            )
 
-        if self.handle_error(json_data):
-            return result
 
-        return result
+        return result if self.handle_error(json_data) else result
 
     def _update_videos(self, video_ids, live_details=False, suppress_errors=False):
-        result = dict()
-        json_data = dict()
-        video_ids_to_update = list()
-        video_ids_cached = list()
+        result = {}
+        json_data = {}
+        video_ids_to_update = []
+        video_ids_cached = []
 
         data_cache = self._context.get_data_cache()
 
@@ -112,23 +119,32 @@ class ResourceManager(object):
                 video_ids_to_update.append(video_id)
             else:
                 video_ids_cached.append(video_id)
-        result.update(video_data)
-        if len(video_ids_cached) > 0:
-            self._context.log_debug('Found cached data for videos |%s|' % ', '.join(video_ids_cached))
+        result |= video_data
+        if video_ids_cached:
+            self._context.log_debug(
+                f"Found cached data for videos |{', '.join(video_ids_cached)}|"
+            )
 
-        if len(video_ids_to_update) > 0:
-            self._context.log_debug('No data for videos |%s| cached' % ', '.join(video_ids_to_update))
+
+        if video_ids_to_update:
+            self._context.log_debug(
+                f"No data for videos |{', '.join(video_ids_to_update)}| cached"
+            )
+
             json_data = self._youtube_client.get_videos(video_ids_to_update, live_details)
-            video_data = dict()
+            video_data = {}
             yt_items = json_data.get('items', [])
             for yt_item in yt_items:
                 video_id = str(yt_item['id'])
                 video_data[video_id] = yt_item
                 result[video_id] = yt_item
             data_cache.set_all(video_data)
-            self._context.log_debug('Cached data for videos |%s|' % ', '.join(list(video_data.keys())))
+            self._context.log_debug(
+                f"Cached data for videos |{', '.join(list(video_data.keys()))}|"
+            )
 
-        played_items = dict()
+
+        played_items = {}
         if self._context.get_settings().use_playback_history():
             playback_history = self._context.get_playback_history()
             played_items = playback_history.get_items(video_ids)
@@ -141,26 +157,21 @@ class ResourceManager(object):
 
     @staticmethod
     def _make_list_of_50(list_of_ids):
-        list_of_50 = []
-        pos = 0
-        while pos < len(list_of_ids):
-            list_of_50.append(list_of_ids[pos:pos + 50])
-            pos += 50
-        return list_of_50
+        return [list_of_ids[pos:pos + 50] for pos in range(0, len(list_of_ids), 50)]
 
     def get_videos(self, video_ids, live_details=False, suppress_errors=False):
         list_of_50s = self._make_list_of_50(video_ids)
 
         result = {}
         for list_of_50 in list_of_50s:
-            result.update(self._update_videos(list_of_50, live_details, suppress_errors))
+            result |= self._update_videos(list_of_50, live_details, suppress_errors)
         return result
 
     def _update_playlists(self, playlists_ids):
-        result = dict()
-        json_data = dict()
-        playlist_ids_to_update = list()
-        playlists_ids_cached = list()
+        result = {}
+        json_data = {}
+        playlist_ids_to_update = []
+        playlists_ids_cached = []
 
         data_cache = self._context.get_data_cache()
 
@@ -170,21 +181,30 @@ class ResourceManager(object):
                 playlist_ids_to_update.append(playlist_id)
             else:
                 playlists_ids_cached.append(playlist_id)
-        result.update(playlist_data)
-        if len(playlists_ids_cached) > 0:
-            self._context.log_debug('Found cached data for playlists |%s|' % ', '.join(playlists_ids_cached))
+        result |= playlist_data
+        if playlists_ids_cached:
+            self._context.log_debug(
+                f"Found cached data for playlists |{', '.join(playlists_ids_cached)}|"
+            )
 
-        if len(playlist_ids_to_update) > 0:
-            self._context.log_debug('No data for playlists |%s| cached' % ', '.join(playlist_ids_to_update))
+
+        if playlist_ids_to_update:
+            self._context.log_debug(
+                f"No data for playlists |{', '.join(playlist_ids_to_update)}| cached"
+            )
+
             json_data = self._youtube_client.get_playlists(playlist_ids_to_update)
-            playlist_data = dict()
+            playlist_data = {}
             yt_items = json_data.get('items', [])
             for yt_item in yt_items:
                 playlist_id = str(yt_item['id'])
                 playlist_data[playlist_id] = yt_item
                 result[playlist_id] = yt_item
             data_cache.set_all(playlist_data)
-            self._context.log_debug('Cached data for playlists |%s|' % ', '.join(list(playlist_data.keys())))
+            self._context.log_debug(
+                f"Cached data for playlists |{', '.join(list(playlist_data.keys()))}|"
+            )
+
 
         if self.handle_error(json_data):
             return result
@@ -194,7 +214,7 @@ class ResourceManager(object):
 
         result = {}
         for list_of_50 in list_of_50s:
-            result.update(self._update_playlists(list_of_50))
+            result |= self._update_playlists(list_of_50)
         return result
 
     def get_related_playlists(self, channel_id):
@@ -218,7 +238,7 @@ class ResourceManager(object):
 
         result = {}
         for list_of_50 in list_of_50s:
-            result.update(self._update_channels(list_of_50))
+            result |= self._update_channels(list_of_50)
         return result
 
     def get_fanarts(self, channel_ids):
@@ -227,6 +247,7 @@ class ResourceManager(object):
 
         result = self._update_channels(channel_ids)
 
+        banners = ['bannerTvMediumImageUrl', 'bannerTvLowImageUrl', 'bannerTvImageUrl']
         # transform
         for key in list(result.keys()):
             item = result[key]
@@ -234,10 +255,8 @@ class ResourceManager(object):
             # set an empty url
             result[key] = u''
             images = item.get('brandingSettings', {}).get('image', {})
-            banners = ['bannerTvMediumImageUrl', 'bannerTvLowImageUrl', 'bannerTvImageUrl']
             for banner in banners:
-                image = images.get(banner, '')
-                if image:
+                if image := images.get(banner, ''):
                     result[key] = image
                     break
 
@@ -247,12 +266,11 @@ class ResourceManager(object):
         context = self._context
         if json_data and 'error' in json_data:
             ok_dialog = False
-            message_timeout = 5000
             message = json_data['error'].get('message', '')
             message = strip_html_from_text(message)
             reason = json_data['error']['errors'][0].get('reason', '')
-            title = '%s: %s' % (context.get_name(), reason)
-            error_message = 'Error reason: |%s| with message: |%s|' % (reason, message)
+            title = f'{context.get_name()}: {reason}'
+            error_message = f'Error reason: |{reason}| with message: |{message}|'
 
             context.log_error(error_message)
 
@@ -260,13 +278,16 @@ class ResourceManager(object):
                 message = context.localize(30731)
                 ok_dialog = True
 
-            if reason == 'quotaExceeded' or reason == 'dailyLimitExceeded':
-                message_timeout = 7000
-
             if not suppress_errors:
                 if ok_dialog:
                     context.get_ui().on_ok(title, message)
                 else:
+                    message_timeout = (
+                        7000
+                        if reason in ['quotaExceeded', 'dailyLimitExceeded']
+                        else 5000
+                    )
+
                     context.get_ui().show_notification(message, title,
                                                        time_milliseconds=message_timeout)
 

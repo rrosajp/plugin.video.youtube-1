@@ -62,8 +62,7 @@ class XbmcContext(AbstractContext):
 
                     self._params = {}
                     params = dict(urllib.parse.parse_qsl(params))
-                    for _param in params:
-                        item = params[_param]
+                    for _param, item in params.items():
                         self._params[_param] = item
 
         self._ui = None
@@ -96,7 +95,7 @@ class XbmcContext(AbstractContext):
         return self._addon
 
     def is_plugin_path(self, uri, uri_path):
-        return uri.startswith('plugin://%s/%s/' % (self.get_id(), uri_path))
+        return uri.startswith(f'plugin://{self.get_id()}/{uri_path}/')
 
     def format_date_short(self, date_obj):
         date_format = xbmc.getRegion('dateshort')
@@ -240,57 +239,68 @@ class XbmcContext(AbstractContext):
         xbmc.sleep(milli_seconds)
 
     def addon_enabled(self, addon_id):
-        rpc_request = json.dumps({"jsonrpc": "2.0",
-                                  "method": "Addons.GetAddonDetails",
-                                  "id": 1,
-                                  "params": {"addonid": "%s" % addon_id,
-                                             "properties": ["enabled"]}
-                                  })
+        rpc_request = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "method": "Addons.GetAddonDetails",
+                "id": 1,
+                "params": {"addonid": f"{addon_id}", "properties": ["enabled"]},
+            }
+        )
+
         response = json.loads(xbmc.executeJSONRPC(rpc_request))
         try:
             return response['result']['addon']['enabled'] is True
         except KeyError:
             message = response['error']['message']
             code = response['error']['code']
-            error = 'Requested |%s| received error |%s| and code: |%s|' % (rpc_request, message, code)
+            error = f'Requested |{rpc_request}| received error |{message}| and code: |{code}|'
+
             self.log_debug(error)
             return False
 
     def set_addon_enabled(self, addon_id, enabled=True):
-        rpc_request = json.dumps({"jsonrpc": "2.0",
-                                  "method": "Addons.SetAddonEnabled",
-                                  "id": 1,
-                                  "params": {"addonid": "%s" % addon_id,
-                                             "enabled": enabled}
-                                  })
+        rpc_request = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "method": "Addons.SetAddonEnabled",
+                "id": 1,
+                "params": {"addonid": f"{addon_id}", "enabled": enabled},
+            }
+        )
+
         response = json.loads(xbmc.executeJSONRPC(rpc_request))
         try:
             return response['result'] == 'OK'
         except KeyError:
             message = response['error']['message']
             code = response['error']['code']
-            error = 'Requested |%s| received error |%s| and code: |%s|' % (rpc_request, message, code)
+            error = f'Requested |{rpc_request}| received error |{message}| and code: |{code}|'
+
             self.log_debug(error)
             return False
 
     def send_notification(self, method, data):
         data = json.dumps(data)
-        self.log_debug('send_notification: |%s| -> |%s|' % (method, data))
+        self.log_debug(f'send_notification: |{method}| -> |{data}|')
         data = '\\"[\\"%s\\"]\\"' % urllib.parse.quote(data)
-        self.execute('NotifyAll(plugin.video.youtube,%s,%s)' % (method, data))
+        self.execute(f'NotifyAll(plugin.video.youtube,{method},{data})')
 
     def use_inputstream_adaptive(self):
         addon_enabled = self.addon_enabled('inputstream.adaptive')
         if self._settings.use_dash() and not addon_enabled:
-            if self.get_ui().on_yes_no_input(self.get_name(), self.localize(30579)):
-                use_dash = self.set_addon_enabled('inputstream.adaptive')
-            else:
-                use_dash = False
+            return (
+                self.set_addon_enabled('inputstream.adaptive')
+                if self.get_ui().on_yes_no_input(
+                    self.get_name(), self.localize(30579)
+                )
+                else False
+            )
+
         elif self._settings.use_dash() and addon_enabled:
-            use_dash = True
+            return True
         else:
-            use_dash = False
-        return use_dash
+            return False
 
     def inputstream_adaptive_capabilities(self, capability=None):
         # return a list inputstream.adaptive capabilities, if capability set return version required
@@ -316,16 +326,18 @@ class XbmcContext(AbstractContext):
             'av1': None,
         }
 
-        if capability is None:
-            ia_loose_version = utils.loose_version(inputstream_version)
-
-            for key in list(capability_map.keys()):
-                if capability_map[key] and (ia_loose_version >= utils.loose_version(capability_map[key])):
-                    capabilities.append(key)
-
-            return capabilities
-        else:
+        if capability is not None:
             return capability_map[capability] if capability_map.get(capability) else None
+        ia_loose_version = utils.loose_version(inputstream_version)
+
+        capabilities.extend(
+            key
+            for key in list(capability_map.keys())
+            if capability_map[key]
+            and (ia_loose_version >= utils.loose_version(capability_map[key]))
+        )
+
+        return capabilities
 
     def inputstream_adaptive_auto_stream_selection(self):
         try:

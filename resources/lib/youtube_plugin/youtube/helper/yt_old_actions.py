@@ -36,9 +36,7 @@ def _process_play_all(provider, context, re_match):
     if not playlist_id:
         raise kodion.KodionException('old_actions/play_all: missing playlist_id')
 
-    # optional starting video id of the playlist
-    video_id = context.get_param('videoid', '')
-    if video_id:
+    if video_id := context.get_param('videoid', ''):
         context.log_warning(
             'USE INSTEAD "plugin://%s/play/?playlist_id=%s&video_id=%s"' % (context.get_id(), playlist_id, video_id))
     else:

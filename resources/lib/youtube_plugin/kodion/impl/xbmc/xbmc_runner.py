@@ -42,7 +42,7 @@ class XbmcRunner(AbstractProviderRunner):
 
         result = results[0]
         options = {}
-        options.update(results[1])
+        options |= results[1]
 
         if isinstance(result, bool) and not result:
             xbmcplugin.endOfDirectory(self.handle, succeeded=False)
@@ -66,9 +66,6 @@ class XbmcRunner(AbstractProviderRunner):
                 self.handle, succeeded=True,
                 updateListing=options.get(AbstractProvider.RESULT_UPDATE_LISTING, False),
                 cacheToDisc=options.get(AbstractProvider.RESULT_CACHE_TO_DISC, True))
-        else:
-            # handle exception
-            pass
 
     def _set_resolved_url(self, context, base_item, succeeded=True):
         item = xbmc_items.to_playback_item(context, base_item)

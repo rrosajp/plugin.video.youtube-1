@@ -112,8 +112,7 @@ def _process_geo_location(provider, context):
 
     locator = ip_api.Locator(context)
     locator.locate_requester()
-    coordinates = locator.coordinates()
-    if coordinates:
+    if coordinates := locator.coordinates():
         settings.set_location('{lat},{lon}'.format(lat=coordinates[0], lon=coordinates[1]))
 
 

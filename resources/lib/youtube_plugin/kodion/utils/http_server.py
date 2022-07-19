@@ -40,25 +40,27 @@ class YouTubeRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.local_ranges = ('10.', '172.16.', '192.168.', '127.0.0.1', 'localhost', '::1')
         self.chunk_size = 1024 * 64
         try:
-            self.base_path = xbmc.translatePath('special://temp/%s' % self.addon_id).decode('utf-8')
+            self.base_path = xbmc.translatePath(
+                f'special://temp/{self.addon_id}'
+            ).decode('utf-8')
+
         except AttributeError:
-            self.base_path = xbmc.translatePath('special://temp/%s' % self.addon_id)
+            self.base_path = xbmc.translatePath(f'special://temp/{self.addon_id}')
         BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
 
     def connection_allowed(self):
         client_ip = self.client_address[0]
-        log_lines = ['HTTPServer: Connection from |%s|' % client_ip]
+        log_lines = [f'HTTPServer: Connection from |{client_ip}|']
         conn_allowed = client_ip.startswith(self.local_ranges)
-        log_lines.append('Local range: |%s|' % str(conn_allowed))
+        log_lines.append(f'Local range: |{str(conn_allowed)}|')
         if not conn_allowed:
             conn_allowed = client_ip in self.whitelist_ips
-            log_lines.append('Whitelisted: |%s|' % str(conn_allowed))
+            log_lines.append(f'Whitelisted: |{conn_allowed}|')
 
         if not conn_allowed:
-            logger.log_debug('HTTPServer: Connection from |%s| not allowed' % client_ip)
-        else:
-            if self.path != '/ping':
-                logger.log_debug(' '.join(log_lines))
+            logger.log_debug(f'HTTPServer: Connection from |{client_ip}| not allowed')
+        elif self.path != '/ping':
+            logger.log_debug(' '.join(log_lines))
         return conn_allowed
 
     # noinspection PyPep8Naming
@@ -80,86 +82,82 @@ class YouTubeRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         if not self.connection_allowed():
             self.send_error(403)
+        elif dash_proxy_enabled and self.path.endswith('.mpd'):
+            file_path = os.path.join(self.base_path, self.path.strip('/').strip('\\'))
+            file_chunk = True
+            logger.log_debug('HTTPServer: Request file path |{file_path}|'.format(file_path=file_path.encode('utf-8')))
+            try:
+                with open(file_path, 'rb') as f:
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/xml+dash')
+                    self.send_header('Content-Length', os.path.getsize(file_path))
+                    self.end_headers()
+                    while file_chunk:
+                        file_chunk = f.read(self.chunk_size)
+                        if file_chunk:
+                            self.wfile.write(file_chunk)
+            except IOError:
+                response = 'File Not Found: |{proxy_path}| -> |{file_path}|'.format(proxy_path=self.path, file_path=file_path.encode('utf-8'))
+                self.send_error(404, response)
+        elif api_config_enabled and self.path == '/api':
+            html = self.api_config_page()
+            html = html.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', len(html))
+            self.end_headers()
+            for chunk in self.get_chunks(html):
+                self.wfile.write(chunk)
+        elif api_config_enabled and self.path.startswith('/api_submit'):
+            addon = xbmcaddon.Addon('plugin.video.youtube')
+            i18n = addon.getLocalizedString
+            xbmc.executebuiltin('Dialog.Close(addonsettings,true)')
+            old_api_key = addon.getSetting('youtube.api.key')
+            old_api_id = addon.getSetting('youtube.api.id')
+            old_api_secret = addon.getSetting('youtube.api.secret')
+            query = urlparse(self.path).query
+            params = parse_qs(query)
+            api_key = params.get('api_key', [None])[0]
+            api_id = params.get('api_id', [None])[0]
+            api_secret = params.get('api_secret', [None])[0]
+            footer = i18n(30638) if api_key and api_id and api_secret else u''
+            if re.search(r'api_key=(?:&|$)', query):
+                api_key = ''
+            if re.search(r'api_id=(?:&|$)', query):
+                api_id = ''
+            if re.search(r'api_secret=(?:&|$)', query):
+                api_secret = ''
+            updated = []
+            if api_key is not None and api_key != old_api_key:
+                addon.setSetting('youtube.api.key', api_key)
+                updated.append(i18n(30201))
+            if api_id is not None and api_id != old_api_id:
+                addon.setSetting('youtube.api.id', api_id)
+                updated.append(i18n(30202))
+            if api_secret is not None and api_secret != old_api_secret:
+                updated.append(i18n(30203))
+                addon.setSetting('youtube.api.secret', api_secret)
+            enabled = (
+                i18n(30636)
+                if addon.getSetting('youtube.api.key')
+                and addon.getSetting('youtube.api.id')
+                and addon.getSetting('youtube.api.secret')
+                else i18n(30637)
+            )
+
+            updated = i18n(30631) % u', '.join(updated) if updated else i18n(30635)
+            html = self.api_submit_page(updated, enabled, footer)
+            html = html.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', len(html))
+            self.end_headers()
+            for chunk in self.get_chunks(html):
+                self.wfile.write(chunk)
+        elif self.path == '/ping':
+            self.send_error(204)
         else:
-            if dash_proxy_enabled and self.path.endswith('.mpd'):
-                file_path = os.path.join(self.base_path, self.path.strip('/').strip('\\'))
-                file_chunk = True
-                logger.log_debug('HTTPServer: Request file path |{file_path}|'.format(file_path=file_path.encode('utf-8')))
-                try:
-                    with open(file_path, 'rb') as f:
-                        self.send_response(200)
-                        self.send_header('Content-Type', 'application/xml+dash')
-                        self.send_header('Content-Length', os.path.getsize(file_path))
-                        self.end_headers()
-                        while file_chunk:
-                            file_chunk = f.read(self.chunk_size)
-                            if file_chunk:
-                                self.wfile.write(file_chunk)
-                except IOError:
-                    response = 'File Not Found: |{proxy_path}| -> |{file_path}|'.format(proxy_path=self.path, file_path=file_path.encode('utf-8'))
-                    self.send_error(404, response)
-            elif api_config_enabled and self.path == '/api':
-                html = self.api_config_page()
-                html = html.encode('utf-8')
-                self.send_response(200)
-                self.send_header('Content-Type', 'text/html; charset=utf-8')
-                self.send_header('Content-Length', len(html))
-                self.end_headers()
-                for chunk in self.get_chunks(html):
-                    self.wfile.write(chunk)
-            elif api_config_enabled and self.path.startswith('/api_submit'):
-                addon = xbmcaddon.Addon('plugin.video.youtube')
-                i18n = addon.getLocalizedString
-                xbmc.executebuiltin('Dialog.Close(addonsettings,true)')
-                old_api_key = addon.getSetting('youtube.api.key')
-                old_api_id = addon.getSetting('youtube.api.id')
-                old_api_secret = addon.getSetting('youtube.api.secret')
-                query = urlparse(self.path).query
-                params = parse_qs(query)
-                api_key = params.get('api_key', [None])[0]
-                api_id = params.get('api_id', [None])[0]
-                api_secret = params.get('api_secret', [None])[0]
-                if api_key and api_id and api_secret:
-                    footer = i18n(30638)
-                else:
-                    footer = u''
-                if re.search(r'api_key=(?:&|$)', query):
-                    api_key = ''
-                if re.search(r'api_id=(?:&|$)', query):
-                    api_id = ''
-                if re.search(r'api_secret=(?:&|$)', query):
-                    api_secret = ''
-                updated = []
-                if api_key is not None and api_key != old_api_key:
-                    addon.setSetting('youtube.api.key', api_key)
-                    updated.append(i18n(30201))
-                if api_id is not None and api_id != old_api_id:
-                    addon.setSetting('youtube.api.id', api_id)
-                    updated.append(i18n(30202))
-                if api_secret is not None and api_secret != old_api_secret:
-                    updated.append(i18n(30203))
-                    addon.setSetting('youtube.api.secret', api_secret)
-                if addon.getSetting('youtube.api.key') and addon.getSetting('youtube.api.id') and \
-                        addon.getSetting('youtube.api.secret'):
-                    enabled = i18n(30636)
-                else:
-                    enabled = i18n(30637)
-                if not updated:
-                    updated = i18n(30635)
-                else:
-                    updated = i18n(30631) % u', '.join(updated)
-                html = self.api_submit_page(updated, enabled, footer)
-                html = html.encode('utf-8')
-                self.send_response(200)
-                self.send_header('Content-Type', 'text/html; charset=utf-8')
-                self.send_header('Content-Length', len(html))
-                self.end_headers()
-                for chunk in self.get_chunks(html):
-                    self.wfile.write(chunk)
-            elif self.path == '/ping':
-                self.send_error(204)
-            else:
-                self.send_error(501)
+            self.send_error(501)
 
     # noinspection PyPep8Naming
     def do_HEAD(self):
@@ -207,8 +205,9 @@ class YouTubeRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             li_headers = {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'Bearer %s' % license_token
+                'Authorization': f'Bearer {license_token}',
             }
+
 
             result = requests.post(url=license_url, headers=li_headers, data=post_data, stream=True)
 
@@ -220,22 +219,32 @@ class YouTubeRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             response_body = content_split[1]
             response_length = len(response_body)
 
-            match = re.search(r'^Authorized-Format-Types:\s*(?P<authorized_types>.+?)\r*$', response_header, re.MULTILINE)
-            if match:
-                authorized_types = match.group('authorized_types').split(',')
+            if match := re.search(
+                r'^Authorized-Format-Types:\s*(?P<authorized_types>.+?)\r*$',
+                response_header,
+                re.MULTILINE,
+            ):
+                authorized_types = match['authorized_types'].split(',')
                 logger.log_debug('HTTPServer: Found authorized formats |{authorized_fmts}|'.format(authorized_fmts=authorized_types))
 
                 fmt_to_px = {'SD': (1280 * 528) - 1, 'HD720': 1280 * 720, 'HD': 7680 * 4320}
-                if 'HD' in authorized_types:
-                    size_limit = fmt_to_px['HD']
-                elif 'HD720' in authorized_types:
-                    if xbmc.getCondVisibility('system.platform.android') == 1:
-                        size_limit = fmt_to_px['HD720']
-                    else:
-                        size_limit = fmt_to_px['SD']
-                elif 'SD' in authorized_types:
+                if (
+                    'HD' not in authorized_types
+                    and 'HD720' in authorized_types
+                    and xbmc.getCondVisibility('system.platform.android') == 1
+                ):
+                    size_limit = fmt_to_px['HD720']
+                elif (
+                    'HD' not in authorized_types
+                    and 'HD720' in authorized_types
+                    and xbmc.getCondVisibility('system.platform.android') != 1
+                    or 'HD' not in authorized_types
+                    and 'HD720' not in authorized_types
+                    and 'SD' in authorized_types
+                ):
                     size_limit = fmt_to_px['SD']
-
+                elif 'HD' in authorized_types:
+                    size_limit = fmt_to_px['HD']
             self.send_response(200)
 
             if size_limit:
@@ -459,24 +468,28 @@ class Pages(object):
 def get_http_server(address=None, port=None):
     addon_id = 'plugin.video.youtube'
     addon = xbmcaddon.Addon(addon_id)
-    address = address if address else addon.getSetting('kodion.http.listen')
+    address = address or addon.getSetting('kodion.http.listen')
     address = address if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', address) else '0.0.0.0'
     port = int(port) if port else 50152
     try:
-        server = BaseHTTPServer.HTTPServer((address, port), YouTubeRequestHandler)
-        return server
+        return BaseHTTPServer.HTTPServer((address, port), YouTubeRequestHandler)
     except socket.error as e:
         logger.log_debug('HTTPServer: Failed to start |{address}:{port}| |{response}|'.format(address=address, port=port, response=str(e)))
-        xbmcgui.Dialog().notification(addon.getAddonInfo('name'), str(e),
-                                      "{}/icon.png".format(addon.getAddonInfo('path')),
-                                      5000, False)
+        xbmcgui.Dialog().notification(
+            addon.getAddonInfo('name'),
+            str(e),
+            f"{addon.getAddonInfo('path')}/icon.png",
+            5000,
+            False,
+        )
+
         return None
 
 
 def is_httpd_live(address=None, port=None):
     addon_id = 'plugin.video.youtube'
     addon = xbmcaddon.Addon(addon_id)
-    address = address if address else addon.getSetting('kodion.http.listen')
+    address = address or addon.getSetting('kodion.http.listen')
     address = '127.0.0.1' if address == '0.0.0.0' else address
     address = address if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', address) else '127.0.0.1'
     port = int(port) if port else 50152
@@ -495,7 +508,7 @@ def is_httpd_live(address=None, port=None):
 def get_client_ip_address(address=None, port=None):
     addon_id = 'plugin.video.youtube'
     addon = xbmcaddon.Addon(addon_id)
-    address = address if address else addon.getSetting('kodion.http.listen')
+    address = address or addon.getSetting('kodion.http.listen')
     address = '127.0.0.1' if address == '0.0.0.0' else address
     address = address if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', address) else '127.0.0.1'
     port = int(port) if port else 50152
@@ -503,7 +516,6 @@ def get_client_ip_address(address=None, port=None):
     response = requests.get(url)
     ip_address = None
     if response.status_code == 200:
-        response_json = response.json()
-        if response_json:
+        if response_json := response.json():
             ip_address = response_json.get('ip')
     return ip_address

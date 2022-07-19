@@ -187,8 +187,7 @@ def js_splice(arr, start, delete_count=None, *items):
     """
     # Special conditions for start value
     try:
-        if start > len(arr):
-            start = len(arr)
+        start = min(start, len(arr))
         # If start is negative, count backwards from end
         if start < 0:
             start = len(arr) - start
@@ -333,7 +332,7 @@ class CalculateN:
                 # When the piece starts with "function" or a quote char, yield
                 # what has been accumulated so far, if anything.
                 if accumulator:
-                    yield piece + ',' + accumulator
+                    yield f'{piece},{accumulator}'
                     accumulator = None
                 else:
                     yield piece
@@ -342,11 +341,10 @@ class CalculateN:
                 # didn't start with "function" or a quote char, start
                 # accumulating with the next pieces until it's closed.
                 accumulator = piece
+            elif accumulator:
+                accumulator = f'{piece},{accumulator}'
             else:
-                if accumulator:
-                    accumulator = piece + ',' + accumulator
-                else:
-                    yield piece
+                yield piece
 
     @classmethod
     def get_throttling_function_array(cls, mutable_n_list, raw_code):
@@ -389,7 +387,7 @@ class CalculateN:
                 converted_array.append(converted_array)
                 continue
 
-            if el[0] == '"' or el[0] == "'":
+            if el[0] in ['"', "'"]:
                 # Strip quotation marks in string elements.
                 converted_array.append(el.strip('\'"'))
                 continue

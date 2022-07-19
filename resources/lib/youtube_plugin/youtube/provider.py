@@ -207,7 +207,7 @@ class Provider(kodion.AbstractProvider):
         _dev_config = context.get_ui().get_home_window_property('configs')
         context.get_ui().clear_home_window_property('configs')
 
-        dev_config = dict()
+        dev_config = {}
         if _dev_config is not None:
             context.log_debug('Using window property for developer keys is deprecated, instead use the youtube_registration module.')
             try:
@@ -266,37 +266,33 @@ class Provider(kodion.AbstractProvider):
         dev_id = context.get_param('addon_id', None)
         dev_configs = YouTube.CONFIGS.get('developer')
         dev_config = self.get_dev_config(context, dev_id, dev_configs)
-        dev_keys = dict()
-        if dev_config:
-            dev_keys = dev_config.get('main')
-
+        dev_keys = dev_config.get('main') if dev_config else {}
         client = None
-        refresh_tokens = list()
+        refresh_tokens = []
 
         if dev_id:
-            dev_origin = dev_config.get('origin') if dev_config.get('origin') else dev_id
+            dev_origin = dev_config.get('origin') or dev_id
             if api_last_origin != dev_origin:
-                context.log_debug('API key origin changed, clearing cache. |%s|' % dev_origin)
+                context.log_debug(f'API key origin changed, clearing cache. |{dev_origin}|')
                 access_manager.set_last_origin(dev_origin)
                 self.get_resource_manager(context).clear()
-        else:
-            if api_last_origin != 'plugin.video.youtube':
-                context.log_debug('API key origin changed, clearing cache. |plugin.video.youtube|')
-                access_manager.set_last_origin('plugin.video.youtube')
-                self.get_resource_manager(context).clear()
+        elif api_last_origin != 'plugin.video.youtube':
+            context.log_debug('API key origin changed, clearing cache. |plugin.video.youtube|')
+            access_manager.set_last_origin('plugin.video.youtube')
+            self.get_resource_manager(context).clear()
 
         if dev_id:
             access_tokens = access_manager.get_dev_access_token(dev_id).split('|')
             if len(access_tokens) != 2 or access_manager.is_dev_access_token_expired(dev_id):
                 # reset access_token
                 access_manager.update_dev_access_token(dev_id, '')
-                access_tokens = list()
+                access_tokens = []
         else:
             access_tokens = access_manager.get_access_token().split('|')
             if len(access_tokens) != 2 or access_manager.is_access_token_expired():
                 # reset access_token
                 access_manager.update_access_token('')
-                access_tokens = list()
+                access_tokens = []
 
         if dev_id:
             if dev_keys:
@@ -360,7 +356,7 @@ class Provider(kodion.AbstractProvider):
 
                     access_tokens = [access_token_tv, access_token_kodi]
 
-                    access_token = '%s|%s' % (access_token_tv, access_token_kodi)
+                    access_token = f'{access_token_tv}|{access_token_kodi}'
                     expires_in = min(expires_in_tv, expires_in_kodi)
                     if dev_id:
                         access_manager.update_dev_access_token(dev_id, access_token, expires_in)
@@ -375,11 +371,10 @@ class Provider(kodion.AbstractProvider):
                             access_manager.update_dev_access_token(dev_id, access_token='', refresh_token='')
                         else:
                             access_manager.update_access_token(access_token='', refresh_token='')
+                    elif dev_id:
+                        access_manager.update_dev_access_token(dev_id, '')
                     else:
-                        if dev_id:
-                            access_manager.update_dev_access_token(dev_id, '')
-                        else:
-                            access_manager.update_access_token('')
+                        access_manager.update_access_token('')
                     # we clear the cache, so none cached data of an old account will be displayed.
                     self.get_resource_manager(context).clear()
 
@@ -430,10 +425,7 @@ class Provider(kodion.AbstractProvider):
         url_converter = UrlToItemConverter(flatten=True)
         url_converter.add_urls([res_url], self, context)
         items = url_converter.get_items(self, context, title_required=False)
-        if len(items) > 0:
-            return items[0]
-
-        return False
+        return items[0] if len(items) > 0 else False
 
     @kodion.RegisterProviderPath('^/playlist/(?P<playlist_id>[^/]+)/$')
     def _on_playlist(self, context, re_match):
@@ -496,13 +488,12 @@ class Provider(kodion.AbstractProvider):
         incognito = str(context.get_param('incognito', False)).lower() == 'true'
         addon_id = context.get_param('addon_id', '')
         if incognito:
-            item_params.update({'incognito': incognito})
+            item_params['incognito'] = incognito
         if addon_id:
-            item_params.update({'addon_id': addon_id})
+            item_params['addon_id'] = addon_id
 
         playlists = resource_manager.get_related_playlists(channel_id)
-        uploads_playlist = playlists.get('uploads', '')
-        if uploads_playlist:
+        if uploads_playlist := playlists.get('uploads', ''):
             uploads_item = DirectoryItem(context.get_ui().bold(context.localize(self.LOCAL_MAP['youtube.uploads'])),
                                          context.create_uri(['channel', channel_id, 'playlist', uploads_playlist],
                                                             item_params),

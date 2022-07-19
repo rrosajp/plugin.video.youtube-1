@@ -26,7 +26,7 @@ _ADDON_ID = 'plugin.video.youtube'
 def log(text, log_level=DEBUG, addon_id=_ADDON_ID):
     if not addon_id:
         addon_id = xbmcaddon.Addon().getAddonInfo('id')
-    log_line = '[%s] %s' % (addon_id, text)
+    log_line = f'[{addon_id}] {text}'
     xbmc.log(msg=log_line, level=log_level)
 
 

@@ -32,7 +32,7 @@ def handle_error(context, json_data):
     if json_data and 'error' in json_data:
         message = json_data['error'].get('message', '')
         reason = json_data['error']['errors'][0].get('reason', '')
-        context.log_error('Error reason: |%s| with message: |%s|' % (reason, message))
+        context.log_error(f'Error reason: |{reason}| with message: |{message}|')
 
         return False
 
@@ -76,10 +76,11 @@ def get_videos(video_id, addon_id=None):
     provider, context, client = __get_core_components(addon_id)
 
     json_data = client.get_videos(video_id)
-    if not handle_error(context, json_data):
-        return [json_data]
-
-    return [item for item in json_data.get('items', [])]
+    return (
+        list(json_data.get('items', []))
+        if handle_error(context, json_data)
+        else [json_data]
+    )
 
 
 def get_activities(channel_id, page_token='', all_pages=False, addon_id=None):
@@ -177,10 +178,11 @@ def get_channel_id(channel_name, addon_id=None):
     provider, context, client = __get_core_components(addon_id)
 
     json_data = client.get_channel_by_username(channel_name)
-    if not handle_error(context, json_data):
-        return [json_data]
-
-    return [item for item in json_data.get('items', [])]
+    return (
+        list(json_data.get('items', []))
+        if handle_error(context, json_data)
+        else [json_data]
+    )
 
 
 def get_channels(channel_id, addon_id=None):
@@ -197,10 +199,11 @@ def get_channels(channel_id, addon_id=None):
     provider, context, client = __get_core_components(addon_id)
 
     json_data = client.get_channels(channel_id)
-    if not handle_error(context, json_data):
-        return [json_data]
-
-    return [item for item in json_data.get('items', [])]
+    return (
+        list(json_data.get('items', []))
+        if handle_error(context, json_data)
+        else [json_data]
+    )
 
 
 def get_channel_sections(channel_id, addon_id=None):
@@ -217,10 +220,11 @@ def get_channel_sections(channel_id, addon_id=None):
     provider, context, client = __get_core_components(addon_id)
 
     json_data = client.get_channel_sections(channel_id)
-    if not handle_error(context, json_data):
-        return [json_data]
-
-    return [item for item in json_data.get('items', [])]
+    return (
+        list(json_data.get('items', []))
+        if handle_error(context, json_data)
+        else [json_data]
+    )
 
 
 def get_playlists_of_channel(channel_id, page_token='', all_pages=False, addon_id=None):
@@ -278,10 +282,11 @@ def get_playlists(playlist_id, addon_id=None):
     provider, context, client = __get_core_components(addon_id)
 
     json_data = client.get_playlists(playlist_id)
-    if not handle_error(context, json_data):
-        return [json_data]
-
-    return [item for item in json_data.get('items', [])]
+    return (
+        list(json_data.get('items', []))
+        if handle_error(context, json_data)
+        else [json_data]
+    )
 
 
 def get_related_videos(video_id, page_token='', addon_id=None):
@@ -413,15 +418,14 @@ def get_live(channel_id=None, user=None, url=None, addon_id=None):
         matched_id = user
         matched_type = 'user'
 
-    elif url:
+    else:
         patterns = [r'^(?:http)*s*:*[/]{0,2}(?:w{3}\.|m\.)*youtu(?:\.be|be\.com)/'
                     r'(?P<type>channel|user)/(?P<channel_id>[^/]+)(?:/live)*$']
 
         for pattern in patterns:
-            match = re.search(pattern, url)
-            if match:
-                matched_id = match.group('channel_id')
-                matched_type = match.group('type')
+            if match := re.search(pattern, url):
+                matched_id = match['channel_id']
+                matched_type = match['type']
                 break
 
     if not matched_id or not matched_type:

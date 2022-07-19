@@ -63,9 +63,12 @@ def process(mode, provider, context, sign_out_refresh=True):
         user_code = json_data['user_code']
         verification_url = json_data.get('verification_url', 'youtube.com/activate').lstrip('https://www.')
 
-        text = [context.localize(provider.LOCAL_MAP['youtube.sign.go_to']) % context.get_ui().bold(verification_url),
-                '[CR]%s %s' % (context.localize(provider.LOCAL_MAP['youtube.sign.enter_code']),
-                               context.get_ui().bold(user_code))]
+        text = [
+            context.localize(provider.LOCAL_MAP['youtube.sign.go_to'])
+            % context.get_ui().bold(verification_url),
+            f"[CR]{context.localize(provider.LOCAL_MAP['youtube.sign.enter_code'])} {context.get_ui().bold(user_code)}",
+        ]
+
         text = ''.join(text)
         dialog = context.get_ui().create_progress_dialog(
             heading=context.localize(provider.LOCAL_MAP['youtube.sign.in']), text=text, background=False)
@@ -88,7 +91,7 @@ def process(mode, provider, context, sign_out_refresh=True):
                 log_data['access_token'] = '<redacted>'
             if 'refresh_token' in log_data:
                 log_data['refresh_token'] = '<redacted>'
-            context.log_debug('Requesting access token: |%s|' % json.dumps(log_data))
+            context.log_debug(f'Requesting access token: |{json.dumps(log_data)}|')
 
             if 'error' not in json_data:
                 _access_token = json_data.get('access_token', '')
@@ -101,9 +104,9 @@ def process(mode, provider, context, sign_out_refresh=True):
 
             elif json_data['error'] != u'authorization_pending':
                 message = json_data['error']
-                title = '%s: %s' % (context.get_name(), message)
+                title = f'{context.get_name()}: {message}'
                 context.get_ui().show_notification(message, title)
-                context.log_error('Error requesting access token: |%s|' % message)
+                context.log_error(f'Error requesting access token: |{message}|')
 
             if dialog.is_aborted():
                 dialog.close()
@@ -123,8 +126,10 @@ def process(mode, provider, context, sign_out_refresh=True):
 
         access_token_tv, expires_in_tv, refresh_token_tv = _do_login(_for_tv=True)
         # abort tv login
-        context.log_debug('YouTube-TV Login: Access Token |%s| Refresh Token |%s| Expires |%s|' %
-                          (access_token_tv != '', refresh_token_tv != '', expires_in_tv))
+        context.log_debug(
+            f"YouTube-TV Login: Access Token |{access_token_tv != ''}| Refresh Token |{refresh_token_tv != ''}| Expires |{expires_in_tv}|"
+        )
+
         if not access_token_tv and not refresh_token_tv:
             provider.reset_client()
             if addon_id:
@@ -136,8 +141,10 @@ def process(mode, provider, context, sign_out_refresh=True):
 
         access_token_kodi, expires_in_kodi, refresh_token_kodi = _do_login(_for_tv=False)
         # abort kodi login
-        context.log_debug('YouTube-Kodi Login: Access Token |%s| Refresh Token |%s| Expires |%s|' %
-                          (access_token_kodi != '', refresh_token_kodi != '', expires_in_kodi))
+        context.log_debug(
+            f"YouTube-Kodi Login: Access Token |{access_token_kodi != ''}| Refresh Token |{refresh_token_kodi != ''}| Expires |{expires_in_kodi}|"
+        )
+
         if not access_token_kodi and not refresh_token_kodi:
             provider.reset_client()
             if addon_id:
@@ -147,8 +154,8 @@ def process(mode, provider, context, sign_out_refresh=True):
             context.get_ui().refresh_container()
             return
 
-        access_token = '%s|%s' % (access_token_tv, access_token_kodi)
-        refresh_token = '%s|%s' % (refresh_token_tv, refresh_token_kodi)
+        access_token = f'{access_token_tv}|{access_token_kodi}'
+        refresh_token = f'{refresh_token_tv}|{refresh_token_kodi}'
         expires_in = min(expires_in_tv, expires_in_kodi)
 
         # we clear the cache, so none cached data of an old account will be displayed.

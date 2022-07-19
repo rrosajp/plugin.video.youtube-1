@@ -39,9 +39,7 @@ def parse(datetime_string, localize=True):
     _utc_to_local = utc_to_local if localize else lambda x: x
 
     def _to_int(value):
-        if value is None:
-            return 0
-        return int(value)
+        return 0 if value is None else int(value)
 
     # match time only '00:45:10'
     time_only_match = __RE_MATCH_TIME_ONLY__.match(datetime_string)
@@ -96,10 +94,7 @@ def get_scheduled_start(datetime_object, localize=True):
     start_minute = '{:<02d}'.format(datetime_object.minute)
     start_time = ':'.join([start_hour, start_minute])
     start_date = str(datetime_object.date())
-    if localize:
-        now = datetime.now()
-    else:
-        now = datetime.utcnow()
+    now = datetime.now() if localize else datetime.utcnow()
     start_date = start_date.replace(str(now.year), '').lstrip('-')
     start_date = start_date.replace('-'.join(['{:02d}'.format(now.month), '{:02d}'.format(now.day)]), '')
     return start_date, start_time

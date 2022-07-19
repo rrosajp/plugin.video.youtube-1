@@ -19,8 +19,7 @@ def _process_related_videos(provider, context):
     result = []
 
     page_token = context.get_param('page_token', '')
-    video_id = context.get_param('video_id', '')
-    if video_id:
+    if video_id := context.get_param('video_id', ''):
         json_data = provider.get_client(context).get_related_videos(video_id=video_id, page_token=page_token)
         if not v3.handle_error(provider, context, json_data):
             return False
@@ -34,8 +33,7 @@ def _process_parent_comments(provider, context):
     result = []
 
     page_token = context.get_param('page_token', '')
-    video_id = context.get_param('video_id', '')
-    if video_id:
+    if video_id := context.get_param('video_id', ''):
         json_data = provider.get_client(context).get_parent_comments(video_id=video_id, page_token=page_token)
         if not v3.handle_error(provider, context, json_data):
             return False
@@ -49,8 +47,7 @@ def _process_child_comments(provider, context):
     result = []
 
     page_token = context.get_param('page_token', '')
-    parent_id = context.get_param('parent_id', '')
-    if parent_id:
+    if parent_id := context.get_param('parent_id', ''):
         json_data = provider.get_client(context).get_child_comments(parent_id=parent_id, page_token=page_token)
         if not v3.handle_error(provider, context, json_data):
             return False
@@ -94,15 +91,11 @@ def _process_browse_channels(provider, context):
 
     if guide_id:
         json_data = client.get_guide_category(guide_id)
-        if not v3.handle_error(provider, context, json_data):
-            return False
-        result.extend(v3.response_to_items(provider, context, json_data))
     else:
         json_data = context.get_function_cache().get(kodion.utils.FunctionCache.ONE_MONTH, client.get_guide_categories)
-        if not v3.handle_error(provider, context, json_data):
-            return False
-        result.extend(v3.response_to_items(provider, context, json_data))
-
+    if not v3.handle_error(provider, context, json_data):
+        return False
+    result.extend(v3.response_to_items(provider, context, json_data))
     return result
 
 
@@ -183,7 +176,7 @@ def _process_description_links(provider, context):
 
         progress_dialog.close()
 
-        if len(result) == 0:
+        if not result:
             progress_dialog.close()
             context.get_ui().on_ok(title=context.localize(provider.LOCAL_MAP['youtube.video.description.links']),
                                    text=context.localize(
@@ -197,9 +190,9 @@ def _process_description_links(provider, context):
 
         item_params = {}
         if incognito:
-            item_params.update({'incognito': incognito})
+            item_params['incognito'] = incognito
         if addon_id:
-            item_params.update({'addon_id': addon_id})
+            item_params['addon_id'] = addon_id
 
         for channel_id in _channel_ids:
             item_uri = context.create_uri(['channel', channel_id], item_params)
@@ -223,9 +216,9 @@ def _process_description_links(provider, context):
 
         item_params = {}
         if incognito:
-            item_params.update({'incognito': incognito})
+            item_params['incognito'] = incognito
         if addon_id:
-            item_params.update({'addon_id': addon_id})
+            item_params['addon_id'] = addon_id
 
         for playlist_id in _playlist_ids:
             item_uri = context.create_uri(['playlist', playlist_id], item_params)

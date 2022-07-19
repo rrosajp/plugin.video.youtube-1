@@ -74,15 +74,12 @@ class Storage(object):
         Tests revealed that sqlite has problems to release the database in time. This happens no so often, but just to
         be sure, we try at least 3 times to execute out statement.
         """
-        for tries in range(3):
+        for _ in range(3):
             try:
                 return self._cursor.execute(query, values)
             except TypeError:
                 return None
-            except:
-                time.sleep(0.1)
-        else:
-            return None
+        return None
 
     def _close(self):
         if self._file is not None:
@@ -116,7 +113,8 @@ class Storage(object):
     def _create_table(self):
         self._open()
         if not self._table_created:
-            query = 'CREATE TABLE IF NOT EXISTS %s (key TEXT PRIMARY KEY, time TIMESTAMP, value BLOB)' % self._table_name
+            query = f'CREATE TABLE IF NOT EXISTS {self._table_name} (key TEXT PRIMARY KEY, time TIMESTAMP, value BLOB)'
+
             self._execute(True, query)
             self._table_created = True
 
@@ -134,7 +132,7 @@ class Storage(object):
         else:
             self._open()
             now = datetime.datetime.now() + datetime.timedelta(microseconds=1)  # add 1 microsecond, required for dbapi2
-            query = 'REPLACE INTO %s (key,time,value) VALUES(?,?,?)' % self._table_name
+            query = f'REPLACE INTO {self._table_name} (key,time,value) VALUES(?,?,?)'
             self._execute(True, query, values=[item_id, now, _encode(item)])
             self._close()
             self._optimize_item_count()
@@ -154,7 +152,7 @@ class Storage(object):
 
     def _clear(self):
         self._open()
-        query = 'DELETE FROM %s' % self._table_name
+        query = f'DELETE FROM {self._table_name}'
         self._execute(True, query)
         self._create_table()
         self._close()
@@ -164,7 +162,7 @@ class Storage(object):
 
     def _is_empty(self):
         self._open()
-        query = 'SELECT exists(SELECT 1 FROM %s LIMIT 1);' % self._table_name
+        query = f'SELECT exists(SELECT 1 FROM {self._table_name} LIMIT 1);'
         result = self._execute(False, query)
         is_empty = True
         if result is not None:
@@ -177,31 +175,26 @@ class Storage(object):
     def _get_ids(self, oldest_first=True):
         self._open()
         # self.sync()
-        query = 'SELECT key FROM %s' % self._table_name
+        query = f'SELECT key FROM {self._table_name}'
         if oldest_first:
-            query = '%s ORDER BY time ASC' % query
+            query = f'{query} ORDER BY time ASC'
         else:
-            query = '%s ORDER BY time DESC' % query
+            query = f'{query} ORDER BY time DESC'
 
         query_result = self._execute(False, query)
 
         result = []
         if query_result:
-            for item in query_result:
-                result.append(item[0])
-
+            result.extend(item[0] for item in query_result)
         self._close()
         return result
 
     def _get(self, item_id):
         def _decode(obj):
-            if PY2:
-                return pickle.loads(str(obj))
-            else:
-                return pickle.loads(obj, encoding='utf-8')
+            return pickle.loads(str(obj)) if PY2 else pickle.loads(obj, encoding='utf-8')
 
         self._open()
-        query = 'SELECT time, value FROM %s WHERE key=?' % self._table_name
+        query = f'SELECT time, value FROM {self._table_name} WHERE key=?'
         result = self._execute(False, query, [item_id])
         if result is None:
             self._close()
@@ -217,7 +210,7 @@ class Storage(object):
 
     def _remove(self, item_id):
         self._open()
-        query = 'DELETE FROM %s WHERE key = ?' % self._table_name
+        query = f'DELETE FROM {self._table_name} WHERE key = ?'
         self._execute(True, query, [item_id])
 
     @staticmethod
@@ -236,10 +229,16 @@ class Storage(object):
         if not current_stamp:
             return 86400  # 24 hrs
         try:
-            stamp_datetime = datetime.datetime(*(self.strptime(current_stamp, stamp_format)[0:6]))
+            stamp_datetime = datetime.datetime(
+                *self.strptime(current_stamp, stamp_format)[:6]
+            )
+
         except ValueError:  # current_stamp has no microseconds
             stamp_format = '%Y-%m-%d %H:%M:%S'
-            stamp_datetime = datetime.datetime(*(self.strptime(current_stamp, stamp_format)[0:6]))
+            stamp_datetime = datetime.datetime(
+                *self.strptime(current_stamp, stamp_format)[:6]
+            )
+
         except TypeError:
             logger.log_error('Exception while calculating timestamp difference: '
                              'current_stamp |{cs}|{cst}| stamp_format |{sf}|{sft}| \n{tb}'
@@ -249,8 +248,9 @@ class Storage(object):
                              )
             return 604800  # one week
 
-        time_delta = current_datetime - stamp_datetime
-        total_seconds = 0
-        if time_delta:
-            total_seconds = ((time_delta.seconds + time_delta.days * 24 * 3600) * 10 ** 6) // (10 ** 6)
-        return total_seconds
+        return (
+            ((time_delta.seconds + time_delta.days * 24 * 3600) * 10**6)
+            // (10**6)
+            if (time_delta := current_datetime - stamp_datetime)
+            else 0
+        )

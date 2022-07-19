@@ -29,10 +29,10 @@ def debug_here(host='localhost'):
 def runtime(context, addon_version, elapsed, single_file=True):
     if not single_file:
         filename_path_part = context.get_path().lstrip('/').rstrip('/').replace('/', '_')
-        debug_file_name = 'runtime_%s-%s.json' % (filename_path_part, addon_version)
+        debug_file_name = f'runtime_{filename_path_part}-{addon_version}.json'
         default_contents = {"runtimes": []}
     else:
-        debug_file_name = 'runtime-%s.json' % addon_version
+        debug_file_name = f'runtime-{addon_version}.json'
         default_contents = {"runtimes": {}}
 
     debug_file = os.path.join(context.get_debug_path(), debug_file_name)
@@ -43,10 +43,7 @@ def runtime(context, addon_version, elapsed, single_file=True):
         contents = f.read()
 
     with open(debug_file, 'w') as f:
-        if not contents:
-            contents = default_contents
-        else:
-            contents = json.loads(contents)
+        contents = json.loads(contents) if contents else default_contents
         if not single_file:
             items = contents.get('runtimes', [])
             items.append({"path": context.get_path(), "parameters": context.get_params(), "runtime": round(elapsed, 4)})

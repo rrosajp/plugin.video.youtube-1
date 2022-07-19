@@ -33,7 +33,7 @@ class PlaybackHistory(Storage):
         self._open()
         placeholders = ','.join(['?' for _ in keys])
         keys = [str(item) for item in keys]
-        query = 'SELECT * FROM %s WHERE key IN (%s)' % (self._table_name, placeholders)
+        query = f'SELECT * FROM {self._table_name} WHERE key IN ({placeholders})'
         query_result = self._execute(False, query, keys)
         result = {}
         if query_result:
@@ -73,7 +73,7 @@ class PlaybackHistory(Storage):
 
         self._open()
         now = datetime.datetime.now() + datetime.timedelta(microseconds=1)  # add 1 microsecond, required for dbapi2
-        query = 'REPLACE INTO %s (key,time,value) VALUES(?,?,?)' % self._table_name
+        query = f'REPLACE INTO {self._table_name} (key,time,value) VALUES(?,?,?)'
         self._execute(True, query, values=[item_id, now, _encode(item)])
         self._close()
 

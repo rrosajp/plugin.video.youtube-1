@@ -48,9 +48,8 @@ def resolve(video_id, sort=True, addon_id=None):
                 r'(?:embed/|watch/|v/|.*?[?&/]v=))(?P<video_id>[\w-]{11}).*']
 
     for pattern in patterns:
-        v_id = re.search(pattern, video_id)
-        if v_id:
-            matched_id = v_id.group('video_id')
+        if v_id := re.search(pattern, video_id):
+            matched_id = v_id['video_id']
             break
 
     if matched_id:

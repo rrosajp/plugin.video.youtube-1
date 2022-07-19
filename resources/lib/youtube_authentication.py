@@ -33,7 +33,7 @@ def __add_new_developer(addon_id):
     if not developers.get(addon_id, None):
         developers[addon_id] = access_manager.get_new_developer()
         access_manager.set_developers(developers)
-        context.log_debug('Creating developer user: |%s|' % addon_id)
+        context.log_debug(f'Creating developer user: |{addon_id}|')
 
 
 def __auth(addon_id, mode=SIGN_IN):
@@ -45,7 +45,7 @@ def __auth(addon_id, mode=SIGN_IN):
     """
     if not addon_id or addon_id == 'plugin.video.youtube':
         context = Context(plugin_id='plugin.video.youtube')
-        context.log_error('Developer authentication: |%s| Invalid addon_id' % addon_id)
+        context.log_error(f'Developer authentication: |{addon_id}| Invalid addon_id')
         return
     __add_new_developer(addon_id)
     params = {'addon_id': addon_id}
@@ -54,23 +54,25 @@ def __auth(addon_id, mode=SIGN_IN):
 
     _ = provider.get_client(context=context)  # NOQA
     logged_in = provider.is_logged_in()
-    if mode == SIGN_IN:
-        if logged_in:
-            return True
-        else:
-            provider.reset_client()
-            yt_login.process(mode, provider, context, sign_out_refresh=False)
+    if (
+        mode == SIGN_IN
+        and logged_in
+        or mode != SIGN_IN
+        and mode == SIGN_OUT
+        and not logged_in
+    ):
+        return True
+    elif mode == SIGN_IN:
+        provider.reset_client()
+        yt_login.process(mode, provider, context, sign_out_refresh=False)
     elif mode == SIGN_OUT:
-        if not logged_in:
-            return True
-        else:
-            provider.reset_client()
-            try:
-                yt_login.process(mode, provider, context, sign_out_refresh=False)
-            except:
-                reset_access_tokens(addon_id)
+        provider.reset_client()
+        try:
+            yt_login.process(mode, provider, context, sign_out_refresh=False)
+        except:
+            reset_access_tokens(addon_id)
     else:
-        raise Exception('Unknown mode: |%s|' % mode)
+        raise Exception(f'Unknown mode: |{mode}|')
 
     _ = provider.get_client(context=context)  # NOQA
     if mode == SIGN_IN:
@@ -156,7 +158,10 @@ def reset_access_tokens(addon_id):
     """
     if not addon_id or addon_id == 'plugin.video.youtube':
         context = Context(plugin_id='plugin.video.youtube')
-        context.log_error('Developer reset access tokens: |%s| Invalid addon_id' % addon_id)
+        context.log_error(
+            f'Developer reset access tokens: |{addon_id}| Invalid addon_id'
+        )
+
         return
     params = {'addon_id': addon_id}
     context = Context(params=params, plugin_id='plugin.video.youtube')
