@@ -100,7 +100,7 @@ class AbstractSettings(object):
 
     def setup_wizard_enabled(self, value=None):
         # Increment min_required on new release to enable oneshot on first run
-        min_required = 4
+        min_required = 5
 
         if value is False:
             self.set_int(SETTINGS.SETUP_WIZARD_RUNS, min_required)
@@ -195,9 +195,10 @@ class AbstractSettings(object):
         return self.get_bool(SETTINGS.AGE_GATE, True)
 
     def verify_ssl(self):
-        verify = self.get_bool(SETTINGS.VERIFY_SSL, False)
         if sys.version_info <= (2, 7, 9):
             verify = False
+        else:
+            verify = self.get_bool(SETTINGS.VERIFY_SSL, True)
         return verify
 
     def get_timeout(self):
@@ -288,6 +289,11 @@ class AbstractSettings(object):
                 continue
             allow_list.append('.'.join(map(str, octets)))
         return allow_list
+
+    def httpd_sleep_allowed(self, value=None):
+        if value is not None:
+            return self.set_bool(SETTINGS.HTTPD_IDLE_SLEEP, value)
+        return self.get_bool(SETTINGS.HTTPD_IDLE_SLEEP, True)
 
     def api_config_page(self):
         return self.get_bool(SETTINGS.API_CONFIG_PAGE, False)
@@ -382,10 +388,16 @@ class AbstractSettings(object):
     }
 
     def stream_select(self, value=None):
+        if self.use_mpd_videos():
+            setting = SETTINGS.MPD_STREAM_SELECT
+            default = 3
+        else:
+            setting = SETTINGS.VIDEO_STREAM_SELECT
+            default = 2
+
         if value is not None:
-            return self.set_int(SETTINGS.MPD_STREAM_SELECT, value)
-        default = 3
-        value = self.get_int(SETTINGS.MPD_STREAM_SELECT, default)
+            return self.set_int(setting, value)
+        value = self.get_int(setting, default)
         if value in self._STREAM_SELECT:
             return self._STREAM_SELECT[value]
         return self._STREAM_SELECT[default]
@@ -419,11 +431,6 @@ class AbstractSettings(object):
             else:
                 types.update(update)
         return types
-
-    def client_selection(self, value=None):
-        if value is not None:
-            return self.set_int(SETTINGS.CLIENT_SELECTION, value)
-        return self.get_int(SETTINGS.CLIENT_SELECTION, 0)
 
     def show_detailed_description(self, value=None):
         if value is not None:

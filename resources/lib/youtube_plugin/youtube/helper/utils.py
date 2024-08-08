@@ -90,27 +90,33 @@ def make_comment_item(context, snippet, uri, total_replies=0):
 
     # Format the label of the comment item.
     if label_props:
-        label = '{author} ({props}) {body}'.format(
-            author=author,
-            props='|'.join(label_props),
-            body=body.replace('\n', ' ')
-        )
+        label = ''.join((
+            author,
+            ' (',
+            '|'.join(label_props),
+            ') ',
+            body.replace('\n', ' '),
+        ))
     else:
-        label = '{author} {body}'.format(
-            author=author, body=body.replace('\n', ' ')
-        )
+        label = ' '.join((
+            author,
+            body.replace('\n', ' '),
+        ))
 
     # Format the plot of the comment item.
     if plot_props:
-        plot = '{author} ({props}){body}'.format(
-            author=author,
-            props='|'.join(plot_props),
-            body=ui.new_line(body, cr_before=2)
-        )
+        plot = ''.join((
+            author,
+            ' (',
+            '|'.join(plot_props),
+            ')',
+            ui.new_line(body, cr_before=2),
+        ))
     else:
-        plot = '{author}{body}'.format(
-            author=author, body=ui.new_line(body, cr_before=2)
-        )
+        plot = ''.join((
+            author,
+            ui.new_line(body, cr_before=2),
+        ))
 
     comment_item = DirectoryItem(label, uri, plot=plot, action=(not uri))
 
@@ -192,7 +198,7 @@ def update_channel_infos(provider, context, channel_id_dict,
         # -- unsubscribe from channel
         subscription_id = subscription_id_dict.get(channel_id, '')
         if subscription_id:
-            channel_item.set_subscription_id(subscription_id)
+            channel_item.subscription_id = subscription_id
             context_menu.append(
                 menu_items.unsubscribe_from_channel(
                     context, subscription_id=subscription_id
@@ -518,12 +524,10 @@ def update_video_infos(provider, context, video_id_dict,
                 type_label = localize('live')
             else:
                 type_label = localize(335)  # "Start"
-            start_at = '{type_label} {start_at}'.format(
-                type_label=type_label,
-                start_at=datetime_parser.get_scheduled_start(
-                    context, local_datetime
-                )
-            )
+            start_at = ' '.join((
+                type_label,
+                datetime_parser.get_scheduled_start(context, local_datetime),
+            ))
 
         label_stats = []
         stats = []
@@ -649,7 +653,7 @@ def update_video_infos(provider, context, video_id_dict,
 
         # update channel mapping
         channel_id = snippet.get('channelId', '')
-        video_item.set_channel_id(channel_id)
+        video_item.channel_id = channel_id
         if channel_id and channel_items_dict is not None:
             if channel_id not in channel_items_dict:
                 channel_items_dict[channel_id] = []
@@ -710,8 +714,8 @@ def update_video_infos(provider, context, video_id_dict,
                 and playlist_channel_id == 'mine'
                 and playlist_id.strip().lower() not in {'hl', 'wl'}):
             playlist_item_id = playlist_item_id_dict[video_id]
-            video_item.set_playlist_id(playlist_id)
-            video_item.set_playlist_item_id(playlist_item_id)
+            video_item.playlist_id = playlist_id
+            video_item.playlist_item_id = playlist_item_id
             context_menu.append(
                 menu_items.remove_video_from_playlist(
                     context,
@@ -724,7 +728,7 @@ def update_video_infos(provider, context, video_id_dict,
         # got to [CHANNEL] only if we are not directly in the channel
         if (channel_id and channel_name and
                 context.create_path('channel', channel_id) != path):
-            video_item.set_channel_id(channel_id)
+            video_item.channel_id = channel_id
             context_menu.append(
                 menu_items.go_to_channel(
                     context, channel_id, channel_name
@@ -809,6 +813,13 @@ def update_video_infos(provider, context, video_id_dict,
                 )
             )
 
+        if video_item.live:
+            context_menu.append(
+                menu_items.play_timeshift(
+                    context, video_id
+                )
+            )
+
         if context_menu:
             context_menu.append(menu_items.separator())
             video_item.add_context_menu(context_menu)
@@ -825,7 +836,7 @@ def update_play_info(provider, context, video_id, video_item, video_stream,
     settings = context.get_settings()
     ui = context.get_ui()
 
-    meta_data = video_stream.get('meta', None)
+    meta_data = video_stream.get('meta')
     if meta_data:
         video_item.live = meta_data.get('status', {}).get('live', False)
         video_item.set_subtitles(meta_data.get('subtitles', None))

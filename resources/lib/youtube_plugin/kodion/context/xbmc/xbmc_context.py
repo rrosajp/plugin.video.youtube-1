@@ -100,11 +100,7 @@ class XbmcContext(AbstractContext):
         'error.no_video_streams_found': 30549,
         'error.rtmpe_not_supported': 30542,
         'failed': 30576,
-        'failed.watch_later.retry': 30614,
-        'failed.watch_later.retry.2': 30709,
-        'failed.watch_later.retry.3': 30710,
         'go_to_channel': 30502,
-        'highlights': 30104,
         'history': 30509,
         'history.clear': 30609,
         'history.clear.confirm': 30610,
@@ -133,7 +129,6 @@ class XbmcContext(AbstractContext):
         'maintenance.playback_history': 30673,
         'maintenance.search_history': 30558,
         'maintenance.watch_later': 30782,
-        'must_be_signed_in': 30616,
         'my_channel': 30507,
         'my_location': 30654,
         'my_subscriptions': 30510,
@@ -164,12 +159,12 @@ class XbmcContext(AbstractContext):
         'purchases': 30622,
         'recommendations': 30551,
         'refresh': 30543,
+        'refresh.settings.confirm': 30818,
         'related_videos': 30514,
         'remove': 30108,
         'removed': 30666,
         'rename': 30113,
         'renamed': 30667,
-        'requires.krypton': 30624,
         'reset.access_manager.confirm': 30581,
         'retry': 30612,
         'saved.playlists': 30611,
@@ -207,7 +202,7 @@ class XbmcContext(AbstractContext):
         'setup_wizard.prompt.settings.performance': 30785,
         'setup_wizard.prompt.subtitles': 30600,
         'sign.enter_code': 30519,
-        'sign.go_to': 30518,
+        'sign.go_to': 30502,
         'sign.in': 30111,
         'sign.out': 30112,
         'sign.twice.text': 30547,
@@ -264,6 +259,7 @@ class XbmcContext(AbstractContext):
         'video.more': 30548,
         'video.play.ask_for_quality': 30730,
         'video.play.audio_only': 30708,
+        'video.play.timeshift': 30819,
         'video.play.with': 30540,
         'video.play.with_subtitles': 30702,
         'video.queue': 30511,
@@ -281,7 +277,6 @@ class XbmcContext(AbstractContext):
         'watch_later.list.set': 30567,
         'watch_later.list.set.confirm': 30570,
         'watch_later.remove': 30108,
-        'watch_later.retrieval_page': 30711,
         'youtube': 30003,
     }
 
@@ -644,7 +639,8 @@ class XbmcContext(AbstractContext):
                                    error.get('message', 'unknown')))
             return False
 
-    def send_notification(self, method, data=True):
+    @staticmethod
+    def send_notification(method, data=True):
         jsonrpc(method='JSONRPC.NotifyAll',
                 params={'sender': ADDON_ID,
                         'message': method,
@@ -675,13 +671,18 @@ class XbmcContext(AbstractContext):
     # - any Falsy value to exclude capability regardless of version
     # - True to include capability regardless of version
     _ISA_CAPABILITIES = {
-        'live': loose_version('2.0.12'),
+        # functionality
         'drm': loose_version('2.2.12'),
+        'live': loose_version('2.0.12'),
+        'timeshift': loose_version('2.5.2'),
         'ttml': loose_version('20.0.0'),
+        # properties
+        'config_prop': loose_version('21.4.11'),
+        'manifest_config_prop': loose_version('21.4.5'),
         # audio codecs
         'vorbis': loose_version('2.3.14'),
-        # Opus audio enabled in Kodi v21+ which fixes stalls after seek
-        'opus': loose_version('21.0.0'),
+        # unknown when Opus audio support was implemented
+        'opus': loose_version('19.0.0'),
         'mp4a': True,
         'ac-3': loose_version('2.1.15'),
         'ec-3': loose_version('2.1.15'),
@@ -779,21 +780,22 @@ class XbmcContext(AbstractContext):
 
         pop_property = self.get_ui().pop_property
         no_timeout = timeout < 0
-        remaining = timeout
-        wait_period = 0.1
+        remaining = timeout = timeout * 1000
+        wait_period_ms = 100
+        wait_period = wait_period_ms / 1000
 
         while no_timeout or remaining > 0:
             awake = pop_property(WAKEUP)
             if awake:
                 if awake == target:
-                    self.log_debug('Wakeup |{0}| in {1}s'
+                    self.log_debug('Wakeup |{0}| in {1}ms'
                                    .format(awake, timeout - remaining))
                 else:
-                    self.log_error('Wakeup |{0}| in {1}s - expected |{2}|'
+                    self.log_error('Wakeup |{0}| in {1}ms - expected |{2}|'
                                    .format(awake, timeout - remaining, target))
                 break
             wait(wait_period)
-            remaining -= wait_period
+            remaining -= wait_period_ms
         else:
-            self.log_error('Wakeup |{0}| timed out in {1}s'
+            self.log_error('Wakeup |{0}| timed out in {1}ms'
                            .format(target, timeout))

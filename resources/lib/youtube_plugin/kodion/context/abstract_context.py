@@ -13,12 +13,13 @@ from __future__ import absolute_import, division, unicode_literals
 import os
 
 from .. import logger
-from ..compatibility import quote, to_str, urlencode
+from ..compatibility import parse_qsl, quote, to_str, urlencode, urlsplit
 from ..constants import (
     PATHS,
     PLAY_FORCE_AUDIO,
     PLAY_PROMPT_QUALITY,
     PLAY_PROMPT_SUBTITLES,
+    PLAY_TIMESHIFT,
     PLAY_WITH,
     VALUE_FROM_STR,
 )
@@ -44,6 +45,7 @@ class AbstractContext(object):
         PLAY_FORCE_AUDIO,
         PLAY_PROMPT_SUBTITLES,
         PLAY_PROMPT_QUALITY,
+        PLAY_TIMESHIFT,
         PLAY_WITH,
         'confirmed',
         'clip',
@@ -135,7 +137,7 @@ class AbstractContext(object):
 
         self._path = self.create_path(path)
         self._params = params or {}
-        self.parse_params()
+        self.parse_params(self._params)
         self._uri = self.create_uri(self._path, self._params)
 
     @staticmethod
@@ -257,7 +259,7 @@ class AbstractContext(object):
     def get_system_version():
         return current_system_version
 
-    def create_uri(self, path=None, params=None):
+    def create_uri(self, path=None, params=None, run=False):
         if isinstance(path, (list, tuple)):
             uri = self.create_path(*path, is_uri=True)
         elif path:
@@ -270,7 +272,11 @@ class AbstractContext(object):
         if params:
             uri = '?'.join((uri, urlencode(params)))
 
-        return uri
+        return ''.join((
+            'RunPlugin(',
+            uri,
+            ')'
+        )) if run else uri
 
     @staticmethod
     def create_path(*args, **kwargs):
@@ -305,10 +311,15 @@ class AbstractContext(object):
     def get_param(self, name, default=None):
         return self._params.get(name, default)
 
-    def parse_params(self, params=None):
-        if not params:
-            params = self._params
+    def parse_uri(self, uri):
+        uri = urlsplit(uri)
+        path = uri.path
+        params = self.parse_params(dict(parse_qsl(uri.query)), update=False)
+        return path, params
+
+    def parse_params(self, params, update=True):
         to_delete = []
+        output = self._params if update else {}
 
         for param, value in params.items():
             try:
@@ -359,10 +370,12 @@ class AbstractContext(object):
                 to_delete.append(param)
                 continue
 
-            self._params[param] = parsed_value
+            output[param] = parsed_value
 
         for param in to_delete:
             del params[param]
+
+        return output
 
     def set_param(self, name, value):
         self.parse_params({name: value})
@@ -465,5 +478,5 @@ class AbstractContext(object):
     def tear_down(self):
         pass
 
-    def wakeup(self):
+    def wakeup(self, target, timeout=None):
         raise NotImplementedError()

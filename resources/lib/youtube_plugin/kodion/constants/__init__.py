@@ -20,11 +20,11 @@ from . import (
 
 # Addon paths
 ADDON_ID = 'plugin.video.youtube'
-ADDON_PATH = 'special://home/addons/{id}'.format(id=ADDON_ID)
-DATA_PATH = 'special://profile/addon_data/{id}'.format(id=ADDON_ID)
+ADDON_PATH = 'special://home/addons/' + ADDON_ID
+DATA_PATH = 'special://profile/addon_data/' + ADDON_ID
 MEDIA_PATH = ADDON_PATH + '/resources/media'
 RESOURCE_PATH = ADDON_PATH + '/resources'
-TEMP_PATH = 'special://temp/{id}'.format(id=ADDON_ID)
+TEMP_PATH = 'special://temp/' + ADDON_ID
 
 # Const values
 VALUE_FROM_STR = {
@@ -66,6 +66,7 @@ WAKEUP = 'wakeup'
 PLAY_FORCE_AUDIO = 'audio_only'
 PLAY_PROMPT_QUALITY = 'ask_for_quality'
 PLAY_PROMPT_SUBTITLES = 'prompt_for_subtitles'
+PLAY_TIMESHIFT = 'timeshift'
 PLAY_WITH = 'play_with'
 
 # Stored data
@@ -122,6 +123,7 @@ __all__ = (
     'PLAY_FORCE_AUDIO',
     'PLAY_PROMPT_QUALITY',
     'PLAY_PROMPT_SUBTITLES',
+    'PLAY_TIMESHIFT',
     'PLAY_WITH',
 
     # Stored data

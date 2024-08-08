@@ -12,7 +12,6 @@ from __future__ import absolute_import, division, unicode_literals
 
 from .utils import get_thumbnail
 from ...kodion import KodionException
-from ...kodion.compatibility import parse_qsl, urlsplit
 from ...kodion.constants import CHANNEL_ID, PATHS, PLAYLISTITEM_ID, PLAYLIST_ID
 from ...kodion.utils import find_video_id
 
@@ -144,17 +143,19 @@ def _process_remove_video(provider,
             context.get_ui().set_focus_next_item()
 
         if playlist_id in container_uri:
-            container_uri = urlsplit(container_uri)
-            path = container_uri.path
-            params = dict(parse_qsl(container_uri.query))
+            uri = container_uri
+            path = None
+            params = {'refresh': params.get('refresh', 0) + 1}
         else:
             path = params.pop('reload_path', False if confirmed else None)
+            uri = None
 
-        if path is not False:
+        if uri or path is not False:
             provider.reroute(
                 context,
                 path=path,
-                params=dict(params, refresh=int(params.get('refresh', 0)) + 1),
+                params=params,
+                uri=uri,
             )
         return True
     return False
